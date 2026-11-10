@@ -1,0 +1,19 @@
+<linker>
+  <assembly fullname="Assembly-CSharp">
+    <type fullname="FoxTable.FoxTableApp" preserve="all" />
+    <type fullname="FoxTable.Session" preserve="all" />
+    <type fullname="FoxTable.RoomState" preserve="all" />
+    <type fullname="FoxTable.SceneState" preserve="all" />
+    <type fullname="FoxTable.TokenState" preserve="all" />
+    <type fullname="FoxTable.Member" preserve="all" />
+    <type fullname="FoxTable.Message" preserve="all" />
+    <type fullname="FoxTable.Drawing" preserve="all" />
+    <type fullname="FoxTable.Ping" preserve="all" />
+    <type fullname="FoxTable.Cell" preserve="all" />
+    <type fullname="FoxTable.ApiError" preserve="all" />
+    <type fullname="FoxTable.AssetReply" preserve="all" />
+    <type fullname="FoxTable.Barrier" preserve="all" />
+    <type fullname="FoxTable.TokenMacro" preserve="all" />
+    <type fullname="FoxTable.BattleEffect" preserve="all" />
+  </assembly>
+</linker>

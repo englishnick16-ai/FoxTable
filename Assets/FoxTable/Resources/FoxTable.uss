@@ -1,0 +1,52 @@
+.root { flex-grow: 1; background-color: #101719; color: #e4e7df; font-size: 15px; }
+Label { white-space: normal; }
+Button { min-height: 44px; min-width: 44px; padding: 9px 12px; margin: 3px; background-color: #253235; color: #e1e7df; border-width: 1px; border-color: #354548; border-radius: 8px; -unity-font-style: normal; }
+Button:hover { background-color: #34474a; }
+Button:active { background-color: #48615d; }
+.primary { background-color: #b89157; color: #131a1b; border-color: #d2ae73; -unity-font-style: bold; margin-top: 12px; }
+.danger { color: #ecaaa0; border-color: #80514b; }
+.row { flex-direction: row; align-items: center; flex-shrink: 0; }
+.row > IntegerField { flex-grow: 1; width: 44%; }
+TextField, IntegerField, PopupField { margin-top: 8px; margin-bottom: 8px; flex-shrink: 0; }
+TextField > Label, IntegerField > Label, PopupField > Label { min-width: 90px; color: #aebdb6; }
+.unity-base-text-field__input { min-height: 40px; background-color: #111c1f; color: #ebeee5; border-width: 1px; border-color: #3a4b4a; border-radius: 6px; padding: 8px; }
+.unity-popup-field__input { min-height: 42px; background-color: #253235; color: #ebeee5; }
+Toggle { min-height: 35px; margin-top: 3px; }
+.lobby { flex-grow: 1; padding: 35px 22px 25px 22px; }
+.brand { color: #d9b577; font-size: 16px; letter-spacing: 4px; margin-bottom: 32px; }
+.headline { font-size: 36px; -unity-font-style: bold; color: #ece8dc; margin-bottom: 18px; }
+.headline-small { font-size: 24px; -unity-font-style: bold; margin-bottom: 16px; }
+.eyebrow { font-size: 11px; color: #a6b1a9; letter-spacing: 1px; margin-top: 18px; margin-bottom: 10px; }
+.card { background-color: #1b272a; padding: 20px; border-radius: 14px; margin-top: 18px; margin-bottom: 22px; }
+.muted { color: #94a69f; font-size: 12px; }
+.header { padding: 12px 14px 8px 14px; background-color: #152023; }
+.brand-small { color: #c9a76a; font-size: 10px; letter-spacing: 2px; }
+.table-title { font-size: 18px; margin-top: 4px; max-height: 48px; overflow: hidden; }
+.online { color: #7fbaa7; font-size: 10px; max-width: 100px; }
+.scene-bar { background-color: #1b292b; padding: 3px 8px; }
+.scene-bar Button { min-height: 34px; padding: 5px 8px; font-size: 12px; }
+.tool-scroll { max-height: 60px; min-height: 60px; background-color: #172326; }
+.tool-scroll .unity-scroller { display: none; }
+.tool-scroll Button { font-size: 12px; min-height: 42px; }
+.active-tool { background-color: #b89157; color: #101719; }
+.bottom-nav { background-color: #101b1e; justify-content: space-around; padding: 6px 2px; }
+.bottom-nav Button { flex-grow: 1; min-width: 30px; padding: 6px 3px; font-size: 12px; background-color: transparent; border-width: 0; }
+.piece { position: absolute; border-radius: 100px; border-width: 2px; border-color: #d3c7a7; justify-content: center; align-items: center; overflow: hidden; color: #132122; -unity-font-style: bold; }
+.selected-piece { border-width: 3px; border-color: #f5dc93; }
+.piece-name { position: absolute; font-size: 10px; color: #f3efdf; -unity-text-align: middle-center; background-color: rgba(9,16,18,0.8); border-radius: 5px; }
+.hp-bar { position: absolute; bottom: 0; left: 0; height: 4px; background-color: #76d9a7; }
+.modal { position: absolute; top: 0; right: 0; bottom: 0; left: 0; justify-content: flex-end; }
+.scrim { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background-color: rgba(0,0,0,0.28); }
+.sheet { background-color: #1a272b; max-height: 65%; min-height: 220px; padding: 12px; border-top-left-radius: 18px; border-top-right-radius: 18px; border-top-width: 1px; border-top-color: #53615b; }
+.sheet-header { padding: 2px 6px 8px 6px; }
+.sheet-title { font-size: 21px; -unity-font-style: bold; }
+.sheet-content { flex-grow: 1; padding: 0 6px 12px 6px; }
+.list-item { padding: 8px 2px; border-bottom-width: 1px; border-bottom-color: #344346; }
+.turn { background-color: #3c473c; border-radius: 7px; }
+.initiative { color: #d9b577; font-size: 24px; min-width: 45px; }
+.chat-message, .roll-message { padding: 9px 12px; margin-bottom: 8px; background-color: #243337; border-radius: 10px; }
+.roll-message { border-left-width: 3px; border-left-color: #cba45f; }
+.chat-message .eyebrow, .roll-message .eyebrow { margin-top: 0; margin-bottom: 4px; }
+.toast { position: absolute; bottom: 125px; left: 15px; right: 15px; padding: 15px; background-color: #ddd0ad; color: #172326; border-radius: 10px; -unity-text-align: middle-center; }
+
+.combat-message { padding: 10px; margin-bottom: 8px; background-color: #352d28; border-radius: 9px; border-left-width: 3px; border-left-color: #ca7859; }
