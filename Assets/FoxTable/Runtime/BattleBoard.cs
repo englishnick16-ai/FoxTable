@@ -10,9 +10,15 @@ namespace FoxTable
     {
         public Action<string> Selected;
         public Action<string> Hint;
+        public Action<Vector2> Placed;
         private readonly RoomClient client;
         private readonly Image map;
         private readonly VisualElement markings, pieces;
+        private Texture2D mapTexture;
+        private readonly Dictionary<string,PieceView> views=new Dictionary<string,PieceView>();
+        private sealed class PieceView { public VisualElement root,hp;public Image art;public Label letter,label; }
+        private bool needsFit=true;
+        private Vector2 dragOrigin;
         private RoomState state;
         private SceneState scene;
         private readonly Dictionary<int, Vector2> pointers = new Dictionary<int, Vector2>();
@@ -24,7 +30,10 @@ namespace FoxTable
         private string dragId, activeScene, selectedId;
         private bool pinching, moved, measuring;
         private float lastFog;
-        public string Tool { get; set; } = "select";
+        private string tool="select";
+        public string Tool { get=>tool;set{if(tool!=value)ResetGesture();tool=value;} }
+        public string SelectedId=>selectedId;
+        public string EditingLayer {get;set;}="all";
         private const float CellSize = 48;
         private float Unit => CellSize * zoom;
 
@@ -54,7 +63,7 @@ namespace FoxTable
                 ZoomAt(local, zoom * Mathf.Exp(-e.delta.y * 0.06f));
                 e.StopPropagation();
             });
-            RegisterCallback<GeometryChangedEvent>(e => { if (scene != null) Refresh(); });
+            RegisterCallback<GeometryChangedEvent>(e => { if (scene != null) {if(needsFit)Fit();else Refresh();} });
             schedule.Execute(() => {
                 if (state?.effect != null && DateTimeOffset.UtcNow.ToUnixTimeSeconds()-state.effect.timestamp < 3)
                     markings.MarkDirtyRepaint();
@@ -79,20 +88,25 @@ namespace FoxTable
             {
                 activeScene = scene.id;
                 selectedId = null;
+                needsFit=true;
                 ResetGesture();
                 Fit();
             }
+            if(selectedId!=null && !scene.tokens.Any(t=>t.id==selectedId)){selectedId=null;Selected?.Invoke(null);}
+            SyncPieces();
             Refresh();
         }
 
-        public void SetMap(Texture2D texture) { map.image = texture; }
+        public void SetMap(Texture2D texture) { mapTexture=texture;map.image = texture;Refresh(); }
         public void Select(string id) { selectedId = id; Refresh(); }
 
         public void Fit()
         {
             if (scene == null) return;
+            if(float.IsNaN(contentRect.width) || float.IsNaN(contentRect.height) || contentRect.width<30 || contentRect.height<30){needsFit=true;return;}
+            needsFit=false;
             zoom = Mathf.Clamp(Mathf.Min((contentRect.width-30) / (scene.width * CellSize),
-                (contentRect.height-30) / (scene.height * CellSize)), 0.12f, 3f);
+                (contentRect.height-30) / (scene.height * CellSize)), 0.05f, 3f);
             offset = new Vector2((contentRect.width-scene.width*Unit)/2, (contentRect.height-scene.height*Unit)/2);
             Refresh();
         }
@@ -100,8 +114,9 @@ namespace FoxTable
         public void Zoom(float multiplier) { ZoomAt(contentRect.center, zoom * multiplier); }
         private void ZoomAt(Vector2 location, float value)
         {
+            if(float.IsNaN(location.x) || float.IsNaN(location.y))return;
             var world = ToCell(location);
-            zoom = Mathf.Clamp(value, 0.12f, 3f);
+            zoom = Mathf.Clamp(value, 0.05f, 3f);
             offset = location - world * Unit;
             Refresh();
         }
@@ -114,6 +129,7 @@ namespace FoxTable
             if (scene == null) return null;
             foreach(var t in scene.tokens.OrderBy(t=>t.layer=="map"?0:t.layer=="gm"?2:1).Reverse())
             {
+                if(EditingLayer!="all" && t.layer!=EditingLayer)continue;
                 if (new Rect(t.x,t.y,t.size,t.size).Contains(p)) return t;
             }
             return null;
@@ -149,8 +165,8 @@ namespace FoxTable
                 if (t!=null)
                 {
                     selectedId=t.id;
-                    if (!client.IsPreview && (state.IsGm || (t.ownerId==state.selfId && t.layer=="tokens" && !t.locked)))
-                    { dragId=t.id; dragPosition=new Vector2(t.x,t.y); }
+                    if (!client.IsPreview && !t.locked && (state.IsGm || (t.ownerId==state.selfId && t.layer=="tokens")))
+                    { dragId=t.id; dragPosition=dragOrigin=new Vector2(t.x,t.y); }
                 }
                 Refresh();
             }
@@ -167,19 +183,19 @@ namespace FoxTable
             if (pinching && pointers.Count>=2)
             {
                 var points=new List<Vector2>(pointers.Values);
-                zoom=Mathf.Clamp(pinchZoom*Vector2.Distance(points[0],points[1])/pinchDistance,0.12f,3f);
+                zoom=Mathf.Clamp(pinchZoom*Vector2.Distance(points[0],points[1])/pinchDistance,0.05f,3f);
                 offset=(points[0]+points[1])/2-pinchWorld*Unit;
                 Refresh();
                 return;
             }
             if (pinching) return;
             moved |= Vector2.Distance(local,start)>7;
-            if (Tool=="pan" || (Tool=="select" && dragId==null)) offset=panStart+local-start;
+            if (Tool=="pan" || Tool=="place" || (Tool=="select" && dragId==null)) offset=panStart+local-start;
             else if (dragId!=null && moved)
             {
                 var t=Array.Find(scene.tokens,v=>v.id==dragId);
                 if (t==null) return;
-                dragPosition=new Vector2(t.x,t.y)+ (local-start)/Unit;
+                dragPosition=dragOrigin+ (local-start)/Unit;
                 dragPosition.x=Mathf.Clamp(dragPosition.x,0,scene.width-t.size);
                 dragPosition.y=Mathf.Clamp(dragPosition.y,0,scene.height-t.size);
             }
@@ -208,8 +224,9 @@ namespace FoxTable
             if (Tool=="select" && !moved)
             {
                 var picked=Hit(ToCell(local));
-                if(picked!=null) Selected?.Invoke(picked.id);
+                selectedId=picked?.id;Selected?.Invoke(selectedId);
             }
+            if(Tool=="place" && !moved && !client.IsPreview)Placed?.Invoke(ToCell(local));
             if (dragId!=null && moved)
                 client.Act("token.move", "tokenId",dragId,"x",dragPosition.x,"y",dragPosition.y);
             if (measuring && moved && Tool!="measure" && state.IsGm)
@@ -261,40 +278,56 @@ namespace FoxTable
             client.Act("fog.paint","x",Mathf.FloorToInt(cell.x),"y",Mathf.FloorToInt(cell.y),"radius",1,"reveal",Tool=="reveal");
         }
 
+        private void SyncPieces()
+        {
+            var alive=new HashSet<string>(scene.tokens.Select(t=>t.id));
+            foreach(var id in views.Keys.Where(id=>!alive.Contains(id)).ToArray())
+            { views[id].root.RemoveFromHierarchy();views[id].label.RemoveFromHierarchy();views.Remove(id); }
+            foreach(var t in scene.tokens.OrderBy(t=>t.layer=="map"?0:t.layer=="gm"?2:1))
+            {
+                if(!views.TryGetValue(t.id,out var view))
+                {
+                    view=new PieceView {root=new VisualElement{pickingMode=PickingMode.Ignore},
+                        art=new Image{pickingMode=PickingMode.Ignore,scaleMode=ScaleMode.ScaleToFit},
+                        letter=new Label{pickingMode=PickingMode.Ignore},hp=new VisualElement{pickingMode=PickingMode.Ignore},
+                        label=new Label{pickingMode=PickingMode.Ignore}};
+                    view.root.AddToClassList("piece");view.art.AddToClassList("miniature-art");
+                    view.hp.AddToClassList("hp-bar");view.label.AddToClassList("piece-name");
+                    view.root.Add(view.art);view.root.Add(view.letter);view.root.Add(view.hp);
+                    pieces.Add(view.root);pieces.Add(view.label);views.Add(t.id,view);
+                }
+                view.root.BringToFront();view.label.BringToFront();
+                view.art.image=TokenCatalog.Texture(TokenCatalog.Art(t));
+                view.art.style.display=view.art.image==null?DisplayStyle.None:DisplayStyle.Flex;
+                view.art.transform.rotation=Quaternion.Euler(0,0,t.rotation);
+                view.letter.style.display=view.art.image==null?DisplayStyle.Flex:DisplayStyle.None;
+                view.letter.text=string.IsNullOrEmpty(t.name)?"?":t.name.Substring(0,1).ToUpperInvariant();
+                view.root.EnableInClassList("prop-piece",t.kind=="object");
+                if(ColorUtility.TryParseHtmlString(t.color,out Color color))
+                    view.root.style.backgroundColor=t.kind=="object"?Color.clear:new Color(color.r*0.35f,color.g*0.35f,color.b*0.35f,0.95f);
+                view.root.style.opacity=t.hidden || t.layer=="gm"?0.4f:1;
+                view.hp.style.display=t.kind=="object"?DisplayStyle.None:DisplayStyle.Flex;
+                view.hp.style.width=Length.Percent(t.maxHp>0?100f*t.hp/t.maxHp:0);
+                view.label.text=t.name+(t.conditions.Length>0?" •":"")+(t.locked?" · закреплён":"");
+            }
+        }
         private void Refresh()
         {
             if (scene==null) return;
-            map.style.left=offset.x; map.style.top=offset.y;
-            map.style.width=scene.width*Unit; map.style.height=scene.height*Unit;
-            pieces.Clear();
-            foreach (var t in scene.tokens.OrderBy(t=>t.layer=="map"?0:t.layer=="gm"?2:1))
+            var bounds=MapLayout.ImageCells(scene,mapTexture==null?0:mapTexture.width,mapTexture==null?0:mapTexture.height);
+            map.style.left=offset.x+bounds.x*Unit;map.style.top=offset.y+bounds.y*Unit;
+            map.style.width=bounds.width*Unit;map.style.height=bounds.height*Unit;
+            foreach(var t in scene.tokens)
             {
-                var piece=new VisualElement {pickingMode=PickingMode.Ignore};
-                piece.AddToClassList("piece");
-                Vector2 pos=t.id==dragId && moved ? dragPosition : new Vector2(t.x,t.y);
-                piece.style.left=offset.x+pos.x*Unit+3;
-                piece.style.top=offset.y+pos.y*Unit+3;
-                piece.style.width=t.size*Unit-6; piece.style.height=t.size*Unit-6;
-                if (ColorUtility.TryParseHtmlString(t.color,out Color color)) piece.style.backgroundColor=color;
-                var letter=new Label(t.name.Length>0?t.name.Substring(0,1).ToUpperInvariant():"?") {pickingMode=PickingMode.Ignore};
-                letter.style.fontSize=Mathf.Clamp(Unit*t.size*0.43f,10,36);
-                piece.Add(letter);
-                piece.style.opacity=t.hidden || t.layer=="gm" ? 0.4f : 1;
-                if(t.layer=="map") {piece.style.borderTopLeftRadius=4;piece.style.borderTopRightRadius=4;piece.style.borderBottomLeftRadius=4;piece.style.borderBottomRightRadius=4;}
-                if (t.id==selectedId || t.id==scene.turnId) piece.AddToClassList("selected-piece");
-                var hp=new VisualElement {pickingMode=PickingMode.Ignore};
-                hp.AddToClassList("hp-bar");
-                hp.style.width=Length.Percent(t.maxHp>0 ? 100f*t.hp/t.maxHp:0);
-                piece.Add(hp);
-                pieces.Add(piece);
-                if (Unit>25)
-                {
-                    var label=new Label(t.name+(t.conditions.Length>0?" •":"")) {pickingMode=PickingMode.Ignore};
-                    label.AddToClassList("piece-name");
-                    label.style.left=offset.x+pos.x*Unit-20; label.style.top=offset.y+(pos.y+t.size)*Unit;
-                    label.style.width=t.size*Unit+40;
-                    pieces.Add(label);
-                }
+                if(!views.TryGetValue(t.id,out var view))continue;
+                Vector2 pos=t.id==dragId && moved?dragPosition:new Vector2(t.x,t.y);
+                view.root.style.left=offset.x+pos.x*Unit+1;view.root.style.top=offset.y+pos.y*Unit+1;
+                view.root.style.width=Mathf.Max(2,t.size*Unit-2);view.root.style.height=Mathf.Max(2,t.size*Unit-2);
+                view.letter.style.fontSize=Mathf.Clamp(Unit*t.size*0.43f,10,36);
+                view.root.EnableInClassList("selected-piece",t.id==selectedId || t.id==scene.turnId);
+                view.label.style.display=Unit>22?DisplayStyle.Flex:DisplayStyle.None;
+                view.label.style.left=offset.x+pos.x*Unit-20;view.label.style.top=offset.y+(pos.y+t.size)*Unit;
+                view.label.style.width=t.size*Unit+40;
             }
             markings.MarkDirtyRepaint();
         }
@@ -344,7 +377,9 @@ namespace FoxTable
             var p=context.painter2D;
             if(scene.grid)
             {
-                Color grid=new Color(0.7f,0.78f,0.74f,0.19f);
+                Color grid=Color.white;
+                if(!string.IsNullOrEmpty(scene.gridColor))ColorUtility.TryParseHtmlString(scene.gridColor,out grid);
+                grid.a=scene.gridOpacity>0?scene.gridOpacity:0.4f;
                 for(int x=0;x<=scene.width;x++) Line(p,ToLocal(x,0),ToLocal(x,scene.height),grid);
                 for(int y=0;y<=scene.height;y++) Line(p,ToLocal(0,y),ToLocal(scene.width,y),grid);
             }

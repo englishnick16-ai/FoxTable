@@ -50,3 +50,53 @@ Toggle { min-height: 35px; margin-top: 3px; }
 .toast { position: absolute; bottom: 125px; left: 15px; right: 15px; padding: 15px; background-color: #ddd0ad; color: #172326; border-radius: 10px; -unity-text-align: middle-center; }
 
 .combat-message { padding: 10px; margin-bottom: 8px; background-color: #352d28; border-radius: 9px; border-left-width: 3px; border-left-color: #ca7859; }
+
+/* 0.4: phone workspace, retained miniatures, image/grid setup. */
+.root { background-color: #11171b; color: #ece9df; font-size: 14px; }
+.header { padding: 9px 12px; border-bottom-width: 1px; border-bottom-color: #2c373a; background-color: #182126; }
+.header Button { min-height: 40px; font-size: 12px; }
+.brand-small { color: #d7ac71; font-size: 10px; letter-spacing: 2px; }
+.table-title { font-size: 16px; margin-top: 3px; max-height: 42px; }
+.online { color: #82c5ac; }
+.scene-bar { background-color: #202b30; padding: 4px 8px; }
+.scene-bar Button { min-height: 34px; margin: 1px 2px; }
+.tool-hint { background-color: #172127; color: #a8b7b5; font-size: 11px; padding: 7px 12px; min-height: 31px; max-height: 48px; overflow: hidden; }
+.tools-main { background-color: #1c272c; justify-content: center; padding: 4px 6px; }
+.tools-main Button { min-height: 42px; flex-grow: 1; font-size: 12px; }
+.bottom-nav { background-color: #121c21; border-top-width: 1px; border-top-color: #344047; padding: 6px 2px 8px 2px; }
+.bottom-nav Button { min-height: 46px; border-radius: 8px; color: #d4dcd4; }
+.bottom-nav Button:hover { background-color: #2c393e; }
+.selection-bar { padding: 7px 7px; background-color: #2a393b; border-top-width: 1px; border-top-color: #c4a573; }
+.selection-bar Button { padding: 6px; min-width: 38px; margin: 2px; min-height: 40px; font-size: 11px; }
+.selection-summary { font-size: 12px; max-height: 50px; overflow: hidden; min-width: 70px; }
+.selection-art { width: 38px; height: 42px; margin-right: 7px; }
+.placement-bar { padding: 8px 12px; background-color: #374b43; color: #e2dfbd; }
+.placement-bar Button { min-height: 38px; }
+.miniature-art { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
+.prop-piece { border-width: 0; border-radius: 5px; overflow: visible; }
+.prop-piece.selected-piece { border-width: 2px; border-color: #f1cf8e; }
+.piece-name { font-size: 10px; padding: 2px; background-color: rgba(12,18,22,0.9); }
+.sheet { max-height: 82%; min-height: 230px; padding: 10px 10px 6px 10px; background-color: #1b272d; border-top-left-radius: 22px; border-top-right-radius: 22px; }
+.sheet-header { padding: 3px 8px 7px 8px; border-bottom-width: 1px; border-bottom-color: #35434a; margin-bottom: 6px; }
+.sheet-title { font-size: 20px; }
+.sheet-content { padding: 2px 8px 16px 8px; }
+.catalog-tabs { height: 51px; min-height: 51px; flex-shrink: 0; margin-bottom: 10px; }
+.catalog-tabs .unity-scroller { display: none; }
+.catalog-tabs Button { min-height: 38px; font-size: 12px; padding: 5px 11px; }
+.catalog-grid { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
+.catalog-tile { width: 30%; min-width: 96px; height: 133px; margin: 4px 1.5%; padding: 7px 4px; background-color: #253238; border-color: #3b4b50; border-radius: 12px; align-items: center; }
+.catalog-art { width: 76px; height: 76px; }
+.catalog-name { font-size: 12px; margin-top: 4px; color: #eee7d7; -unity-text-align: middle-center; }
+.catalog-tile .muted { font-size: 10px; margin-top: 3px; }
+.map-preview { height: 240px; min-height: 240px; overflow: hidden; background-color: #0c1318; margin-bottom: 12px; border-radius: 10px; border-width: 1px; border-color: #435354; }
+FloatField { margin-top: 8px; margin-bottom: 8px; flex-shrink: 0; }
+FloatField > Label { min-width: 145px; color: #b6c2bb; }
+Slider { margin-top: 16px; margin-bottom: 16px; min-height: 42px; }
+.online-foldout { margin-top: 12px; padding: 12px; background-color: #1b272b; border-radius: 12px; }
+.online-foldout > Toggle { min-height: 44px; font-size: 16px; }
+.primary { background-color: #d0ac73; border-color: #e0c18a; color: #172026; }
+.active-tool { background-color: #c9a46a; color: #142022; }
+.lobby { padding: 22px 20px; }
+.brand { margin-bottom: 18px; }
+.headline { font-size: 32px; margin-bottom: 8px; }
+.card { padding: 15px; margin-top: 10px; margin-bottom: 12px; }

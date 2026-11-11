@@ -39,6 +39,8 @@ namespace FoxTable
     [Serializable] public sealed class SceneState
     {
         public string id, name, mapId, turnId;
+        public string background, gridColor;
+        public float mapPixelsPerCell, mapOffsetX, mapOffsetY, gridOpacity;
         public int width, height, cellFeet, round;
         public bool grid, snap, fog, activeCombat;
         public bool lighting, daylight, explorer, sharedVision, restrictMovement, enforceSpeed;
@@ -51,6 +53,8 @@ namespace FoxTable
     [Serializable] public sealed class TokenState
     {
         public string id, name, kind, ownerId, color;
+        public string artId;
+        public int rotation;
         public float x, y;
         public int size, hp, maxHp, ac, initiative;
         public bool hidden;
@@ -147,6 +151,10 @@ namespace FoxTable
             var result = new Dictionary<string, object>();
             for (int i = 0; i < pairs.Length; i += 2) result[(string)pairs[i]] = pairs[i + 1];
             return result;
+        }
+        public static object[] Pairs(Dictionary<string,object> fields)
+        {
+            var pairs=new List<object>();foreach(var pair in fields){pairs.Add(pair.Key);pairs.Add(pair.Value);}return pairs.ToArray();
         }
     }
 }

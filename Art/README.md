@@ -1,0 +1,1 @@
+Original FoxTable miniature art, drawn in SVG by code. No third-party assets. Source: Tools/generate_miniatures.py. PNG runtime exports in Resources/Miniatures. Decorative door/wall models do not create collision barriers; use the wall/door tools for game rules.

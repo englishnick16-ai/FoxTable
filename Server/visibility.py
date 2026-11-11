@@ -87,12 +87,13 @@ def upgrade(state):
     state['formatVersion'] = 2
     for scene in state['scenes']:
         defaults = dict(lighting=False, daylight=True, explorer=True, sharedVision=False,
-                        restrictMovement=True, enforceSpeed=False, barriers=[], exploredBy={})
+                        restrictMovement=True, enforceSpeed=False, barriers=[], exploredBy={},
+                        background='', gridColor='', gridOpacity=0, mapPixelsPerCell=0, mapOffsetX=0, mapOffsetY=0)
         for key, value in defaults.items():
             scene.setdefault(key, value)
         for token in scene['tokens']:
             for key, value in dict(layer='tokens', locked=False, visionRange=60, nightVision=0,
                     lightRadius=0, auraFeet=0, speed=30, movedFeet=0, tempHp=0,
-                    attackBonus=3, damage='1d6+1', attackRange=5, macros=[]).items():
+                    attackBonus=3, damage='1d6+1', attackRange=5, macros=[], artId='', rotation=0).items():
                 token.setdefault(key, value)
     return state

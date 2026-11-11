@@ -17,10 +17,10 @@ namespace FoxTable
             var t=Array.Find(s.Active.tokens,v=>v.id==selectedId);
             if(t==null){Label(content,"Жетон больше не виден");return;}
             Label(content,t.name,"headline-small");
-            Label(content,$"{t.hp}/{t.maxHp} HP · временные {t.tempHp} · КД {t.ac}");
-            Label(content,$"Перемещение {t.movedFeet:0.#}/{t.speed} фт · атака {t.attackBonus:+0;-0;0}, {t.damage}","muted");
+            actionStats=Label(content,t.kind=="object"?"Объект карты":$"{t.hp}/{t.maxHp} HP · временные {t.tempHp} · КД {t.ac}");
+            if(t.kind!="object")Label(content,$"Перемещение {t.movedFeet:0.#}/{t.speed} фт · атака {t.attackBonus:+0;-0;0}, {t.damage}","muted");
             bool editable=!client.IsPreview && (s.IsGm || (t.ownerId==s.selfId && t.layer=="tokens"));
-            if(editable)
+            if(editable && t.kind!="object")
             {
                 var amount=Number(content,"Урон / лечение",quickAmount);
                 amount.RegisterValueChangedCallback(e=>quickAmount=Mathf.Clamp(e.newValue,1,9999));
@@ -48,6 +48,10 @@ namespace FoxTable
             Button(content,"Карточка и состояния",()=>OpenPanel("token"));
             if(s.IsGm)
             {
+                var quick=Row(content);
+                Button(quick,"Повернуть 45°",()=>{var current=Array.Find(client.State.Active.tokens,v=>v.id==t.id);if(current!=null)client.Act("token.update","tokenId",t.id,"rotation",(current.rotation+45)%360);});
+                Button(quick,t.locked?"Открепить":"Закрепить",()=>{client.Act("token.update","tokenId",t.id,"locked",!t.locked);ClosePanel();});
+                Button(quick,t.hidden?"Показать":"Скрыть",()=>{client.Act("token.update","tokenId",t.id,"hidden",!t.hidden);ClosePanel();});
                 Button(content,"Зрение, свет, слои и действия",()=>OpenPanel("profile"));
                 Button(content,"Дублировать жетон",()=>{client.Act("token.duplicate","tokenId",t.id);ClosePanel();});
             }
@@ -70,7 +74,7 @@ namespace FoxTable
             var layer=new PopupField<string>("Слой",new List<string>{"Жетоны","Объекты карты","Только мастер"},Mathf.Max(0,Array.IndexOf(layers,t.layer)));
             content.Add(layer);
             bool locked=t.locked;
-            Check(content,"Заблокировать движение игроку",locked,value=>locked=value);
+            Check(content,"Закрепить на карте",locked,value=>locked=value);
             var speed=Number(content,"Скорость за ход",t.speed);
             var temporary=Number(content,"Временные HP",t.tempHp);
             Label(content,"БЫСТРАЯ АТАКА","eyebrow");
@@ -113,7 +117,7 @@ namespace FoxTable
             Label(content,"Зрение и свет задаются в настройках жетона. Назначьте герою владельца. Для ночного подземелья выключите дневной свет.","muted");
             Label(content,"НАРИСОВАТЬ ПРЕГРАДУ","eyebrow");
             var row=Row(content);
-            void Draw(string tool) {board.Tool=tool;ClosePanel();ShowToast("Проведите по карте. Концы привязываются к узлам сетки.");}
+            void Draw(string tool) {SetTool(tool);ClosePanel();ShowToast("Проведите по карте. Концы привязываются к узлам сетки.");}
             Button(row,"Стена",()=>Draw("wall"));Button(row,"Дверь",()=>Draw("door"));Button(row,"Окно",()=>Draw("window"));
             Label(content,"У двери должен быть разрыв в стене. Сплошная стена под открытой дверью продолжает перекрывать путь.","muted");
             foreach(var wall in scene.barriers)

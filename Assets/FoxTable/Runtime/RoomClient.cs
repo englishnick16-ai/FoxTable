@@ -18,6 +18,9 @@ namespace FoxTable
         public bool IsLocal { get; private set; }
         private LocalCampaignStore localStore;
         private readonly LocalGame localGame = new LocalGame();
+        private readonly List<RoomState> undo=new List<RoomState>();
+        public bool CanUndo=>IsLocal && (undo.Count>0 || operations.Count>0);
+        public bool HasOnlineSession=>File.Exists(SessionPath);
         private bool localDirty;
         private Coroutine localSave;
         private LocalCampaignStore LocalStore => localStore ?? (localStore = new LocalCampaignStore(Path.Combine(Application.persistentDataPath, "local")));
@@ -30,6 +33,7 @@ namespace FoxTable
             catch (Exception e) { Notice?.Invoke(e.Message); return; }
             StopAllCoroutines(); poll = sender = localSave = null; operations.Clear();
             IsLocal = true; PreviewMemberId = null;
+            undo.Clear();
             Session = new Session { code = "LOCAL", memberId = saved.selfId, role = "gm" };
             State = saved;
             localDirty = true; SaveLocal();
@@ -62,12 +66,14 @@ namespace FoxTable
         private void ApplyLocal(Dictionary<string, object> operation)
         {
             RoomState next;
+            var previous=State;
             try {
                 next = localGame.ApplyCopy(State, operation);
             } catch (Exception e) when (e is ArgumentException || e is InvalidCastException || e is OverflowException) {
                 Notice?.Invoke(e.Message); return;
             }
             State = next; localDirty = true;
+            undo.Add(previous);if(undo.Count>20)undo.RemoveAt(0);
             if (localSave == null) localSave = StartCoroutine(SaveLocalSoon());
             Changed?.Invoke(State);
         }
@@ -77,6 +83,16 @@ namespace FoxTable
         private Coroutine poll, sender;
         private string SessionPath => Path.Combine(Application.persistentDataPath, "session.json");
         public string RoomPath => "/api/rooms/" + Session.code;
+
+        public void UndoLocal()
+        {
+            if(!IsLocal)return;
+            DrainLocalQueue();
+            if(undo.Count==0){Notice?.Invoke("Нет действий для отмены");return;}
+            int revision=State.revision+1;
+            State=undo[undo.Count-1];undo.RemoveAt(undo.Count-1);State.revision=revision;
+            localDirty=true;SaveLocal();Changed?.Invoke(State);
+        }
 
         public void Create(string server, string name, string title)
         {
@@ -126,7 +142,7 @@ namespace FoxTable
             catch (Exception) { Notice?.Invoke("Не удалось прочитать сохранённую сессию"); }
         }
 
-        public bool Leave()
+        public bool Leave(bool forgetOnline=true)
         {
             DrainLocalQueue();
             SaveLocal();
@@ -137,11 +153,11 @@ namespace FoxTable
             if (poll != null) StopCoroutine(poll);
             if (sender != null) StopCoroutine(sender);
             poll = sender = null;
-            operations.Clear();
+            operations.Clear();undo.Clear();
             State = null;
             PreviewMemberId = null;
             Session = null;
-            try { if (!wasLocal && File.Exists(SessionPath)) File.Delete(SessionPath); }
+            try { if (!wasLocal && forgetOnline && File.Exists(SessionPath)) File.Delete(SessionPath); }
             catch (IOException) { Notice?.Invoke("Не удалось удалить сохранённую сессию"); }
             return true;
         }
@@ -249,28 +265,30 @@ namespace FoxTable
             UploadMap(bytes, path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg");
         }
 
-        public void UploadMap(byte[] bytes, string mime)
+        public void UploadMap(byte[] bytes, string mime,Dictionary<string,object> settings=null)
         {
             if (State == null || !State.IsGm) return;
-            if (bytes.Length > 6 * 1024 * 1024) { Notice?.Invoke("Карта должна быть меньше 6 МБ"); return; }
+            if (!MapImage.Fits(bytes)) { Notice?.Invoke("Карта: PNG / JPEG до 6 МБ и 16 мегапикселей"); return; }
+            var fields=settings==null?new Dictionary<string,object>():new Dictionary<string,object>(settings);
+            string sceneId=fields.TryGetValue("sceneId",out var idValue)?(string)idValue:State.sceneId;
+            fields["sceneId"]=sceneId;
             if (IsLocal) {
                 var check = new Texture2D(2, 2);
                 try {
-                    if (!check.LoadImage(bytes) || check.width > 8192 || check.height > 8192) {
+                    if (!check.LoadImage(bytes) || check.width > 8192 || check.height > 8192 || (long)check.width*check.height>16*1024*1024) {
                         Notice?.Invoke("Нужна карта PNG / JPEG размером до 8192 × 8192"); return;
                     }
                     string id = LocalStore.WriteMap(bytes);
-                    Act("scene.update", "mapId", id);
+                    fields["mapId"]=id;Act("scene.update",Json.Pairs(fields));
                 } catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) {
                     Notice?.Invoke("Не удалось сохранить карту на телефоне");
                 } finally { Destroy(check); }
                 return;
             }
-            string sceneId = State.sceneId;
-            StartCoroutine(Upload(bytes, mime, sceneId));
+            StartCoroutine(Upload(bytes, mime,fields));
         }
 
-        private IEnumerator Upload(byte[] bytes, string mime, string sceneId)
+        private IEnumerator Upload(byte[] bytes, string mime,Dictionary<string,object> fields)
         {
             using (var request = Build(Session.server + RoomPath + "/assets", "POST",
                 Json.Encode(Json.Fields("mime", mime, "data", Convert.ToBase64String(bytes))), Session.secret))
@@ -279,7 +297,7 @@ namespace FoxTable
                 if (Success(request))
                 {
                     var result = JsonUtility.FromJson<AssetReply>(request.downloadHandler.text);
-                    Act("scene.update", "sceneId", sceneId, "mapId", result.assetId);
+                    fields["mapId"]=result.assetId;Act("scene.update",Json.Pairs(fields));
                 }
             }
         }

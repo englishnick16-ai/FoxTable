@@ -60,7 +60,7 @@ namespace FoxTable
             client.Notice += ShowToast;
             client.ConnectionChanged += message => { if (status != null) status.text = message; };
             Lobby();
-            client.Resume();
+
         }
 
         private void Update()
@@ -119,7 +119,9 @@ namespace FoxTable
             Label(local, "СТОЛ НА ТВОЁМ ТЕЛЕФОНЕ", "eyebrow");
             Button(local, "Играть локально", client.OpenLocal, "primary");
             Label(local, "Без сервера, интернета и регистрации. Кампания сохраняется автоматически; эта кнопка продолжит сохранённую игру.", "muted");
-            var card = new VisualElement(); card.AddToClassList("card"); scroll.Add(card);
+            var online = new Foldout {text="Онлайн с друзьями",value=false};online.AddToClassList("online-foldout");scroll.Add(online);
+            var card = new VisualElement(); card.AddToClassList("card"); online.Add(card);
+            if(client.HasOnlineSession)Button(card,"Продолжить онлайн-комнату",client.Resume,"primary");
             Label(card, "ОНЛАЙН С ДРУЗЬЯМИ", "eyebrow");
             var server = Field(card, "Сервер", PlayerPrefs.GetString("server", "https://"));
             var name = Field(card, "Твоё имя", PlayerPrefs.GetString("name", "Мастер"));
@@ -139,58 +141,37 @@ namespace FoxTable
             var recovery = Field(card, "Личный ключ");
             recovery.isPasswordField = true;
             Button(card, "Восстановить доступ", () => client.Restore(server.value, code.value, recovery.value));
-            Label(scroll, "v0.3 · Unity / Android\nЛокально — один телефон. Онлайн — общая комната на сервере FoxTable.", "muted");
+            Label(scroll, "v0.4 · Unity / Android\nЛокально — один телефон. Онлайн — общая комната на сервере FoxTable.", "muted");
         }
 
         private void Table()
         {
-            screen.Clear();
+            screen.Clear();modeButtons.Clear();stamp=null;
             tableGm=client.State.IsGm;loadedMap=null;lastRevision=-1;
-            var header = Row(screen); header.AddToClassList("header");
-            var branding = new VisualElement(); branding.style.flexGrow = 1; header.Add(branding);
-            Label(branding, "FOX / TABLE", "brand-small");
-            title = Label(branding, "", "table-title");
-            status = Label(header, client.IsLocal?"Локально":"В сети", "online");
-            if(client.Session.role=="gm" && !client.IsLocal) Button(header,client.IsPreview?"Вернуться":"Глаз",()=> {
-                if(client.IsPreview){client.Preview(null);ClosePanel();}else OpenPanel("vision");
-            });
-            Button(header, "☰", () => OpenPanel("room"));
-            var bar = Row(screen); bar.AddToClassList("scene-bar");
-            info = Label(bar, "", "muted"); info.style.flexGrow = 1;
-            Button(bar, "−", () => board.Zoom(0.8f));
-            Button(bar, "Вписать", () => board.Fit());
-            Button(bar, "+", () => board.Zoom(1.25f));
-            board = new BattleBoard(client);
-            board.Selected += id => { selectedId = id; OpenPanel("actions"); };
-            board.Hint += value => info.text = value;
+            var header=Row(screen);header.AddToClassList("header");
+            var branding=new VisualElement();branding.style.flexGrow=1;header.Add(branding);
+            Label(branding,"FOX TABLE","brand-small");title=Label(branding,"","table-title");
+            status=Label(header,client.IsLocal?"На телефоне":"В сети","online");
+            Button(header,"Меню",()=>OpenPanel("room"));
+            var bar=Row(screen);bar.AddToClassList("scene-bar");
+            info=Label(bar,"","muted");info.style.flexGrow=1;
+            Button(bar,"−",()=>board.Zoom(0.8f));Button(bar,"Вписать",()=>board.Fit());Button(bar,"+",()=>board.Zoom(1.25f));
+            board=new BattleBoard(client);
+            board.Selected+=id=>{selectedId=id;RefreshSelection();};
+            board.Placed+=PlaceMiniature;
+            board.Hint+=value=>{if(toolText!=null)toolText.text=value;};
             screen.Add(board);
-            var toolScroll = new ScrollView(ScrollViewMode.Horizontal);
-            toolScroll.AddToClassList("tool-scroll");
-            var tools = Row(toolScroll);
-            Tool(tools,"Выбор","select"); Tool(tools,"Рука","pan"); Tool(tools,"Линейка","measure"); Tool(tools,"Метка","ping"); Tool(tools,"Двери","doorUse");
-            if (client.State.IsGm)
-            {
-                Tool(tools,"Открыть","reveal"); Tool(tools,"Скрыть","conceal");
-                Tool(tools,"Круг","circle"); Tool(tools,"Конус","cone"); Tool(tools,"Линия","line");
-            }
-            screen.Add(toolScroll);
-            var bottom = Row(screen); bottom.AddToClassList("bottom-nav");
-            Button(bottom,"Жетоны",()=>OpenPanel("tokens"));
-            Button(bottom,"Бой",()=>OpenPanel("combat"));
-            Button(bottom,"Кубики",()=>OpenPanel("dice"));
-            Button(bottom,"Чат",()=>OpenPanel("chat"));
-            if(client.State.IsGm) Button(bottom,"Карты",()=>OpenPanel("maps"));
-        }
-
-        private void Tool(VisualElement parent, string label, string tool)
-        {
-            var button = Button(parent,label,()=> {
-                board.Tool=tool;
-                foreach(var child in parent.Children()) child.RemoveFromClassList("active-tool");
-                foreach(var child in parent.Children()) if(child is Button b && b.text==label) child.AddToClassList("active-tool");
-                if(tool=="reveal" || tool=="conceal") ShowToast("Включите туман в разделе «Карты». Кисть: 3×3 клетки");
-            });
-            if(tool=="select")button.AddToClassList("active-tool");
+            toolText=Label(screen,ToolHelp("select"),"tool-hint");
+            BuildSelectionBar();
+            var tools=Row(screen);tools.AddToClassList("tools-main");
+            ModeButton(tools,"Двигать","select");ModeButton(tools,"Линейка","measure");
+            Button(tools,"Инструменты",()=>OpenPanel("tools"));
+            if(client.IsLocal)undoButton=Button(tools,"Отменить",client.UndoLocal);else undoButton=null;
+            var bottom=Row(screen);bottom.AddToClassList("bottom-nav");
+            Button(bottom,client.State.IsGm?"Модели":"Фигуры",()=>OpenPanel("catalog"));
+            if(client.State.IsGm)Button(bottom,"Карта",()=>OpenPanel("maps"));
+            Button(bottom,"Бой",()=>OpenPanel("combat"));Button(bottom,"Кубики",()=>OpenPanel("dice"));
+            Button(bottom,"Журнал",()=>OpenPanel("chat"));
         }
 
         private void StateChanged(RoomState state)
@@ -202,15 +183,17 @@ namespace FoxTable
             {
                 lastRevision=state.revision;
                 board.SetState(state);
-                if(panel=="chat" || panel=="combat" || panel=="tokens" || panel=="actions" || panel=="lighting") OpenPanel(panel);
+                if(panel=="chat")RefreshJournal();
+                if(panel=="combat")OpenPanel("combat");
+                RefreshSelection();
             }
-            string key=state.Active.id+":"+state.Active.mapId;
+            string key=state.Active.id+":"+state.Active.mapId+":"+state.Active.background;
             if(loadedMap!=key)
             {
                 loadedMap=key;
                 if(mapRequest!=null) StopCoroutine(mapRequest);
                 if(downloadedMap!=null) {Destroy(downloadedMap);downloadedMap=null;}
-                board.SetMap(Resources.Load<Texture2D>("Sanctuary"));
+                board.SetMap(state.Active.background=="blank"?null:Resources.Load<Texture2D>("Sanctuary"));
                 if(!string.IsNullOrEmpty(state.Active.mapId))
                     mapRequest=StartCoroutine(client.DownloadMap(state.Active.mapId, texture=> {
                         if(loadedMap==key && board!=null) {downloadedMap=texture;board.SetMap(texture);}
@@ -219,11 +202,11 @@ namespace FoxTable
             }
         }
 
-        private void ClosePanel() { panel=""; modal.style.display=DisplayStyle.None; }
+        private void ClosePanel() { panel="";actionStats=null;journalItems=null;modal.style.display=DisplayStyle.None; }
         private void OpenPanel(string kind)
         {
             if(client.State==null)return;
-            panel=kind; modal.Clear(); modal.style.display=DisplayStyle.Flex;
+            panel=kind;actionStats=null;journalItems=null;modal.Clear();modal.style.display=DisplayStyle.Flex;
             var dismiss = new VisualElement(); dismiss.AddToClassList("scrim");
             dismiss.RegisterCallback<ClickEvent>(e=>ClosePanel()); modal.Add(dismiss);
             sheet = new VisualElement(); sheet.AddToClassList("sheet"); modal.Add(sheet);
@@ -238,7 +221,11 @@ namespace FoxTable
                 case "combat": Combat(content); break;
                 case "dice": Dice(content); break;
                 case "chat": Chat(content); break;
-                case "maps": Maps(content); break;
+                case "maps": MapWorkspace(content); break;
+                case "catalog":Catalog(content);break;
+                case "tools":ToolsPanel(content);break;
+                case "grid":GridWorkspace(content,false);break;
+                case "importMap":GridWorkspace(content,true);break;
                 case "room": Room(content); break;
                 case "actions": Actions(content); break;
                 case "profile": Profile(content); break;
@@ -251,7 +238,11 @@ namespace FoxTable
         {
             switch(kind)
             {
-                case "tokens":return "Жетоны на карте";
+                case "tokens":return "Объекты на карте";
+                case "catalog":return "Каталог моделей";
+                case "tools":return "Инструменты карты";
+                case "grid":return "Настроить сетку";
+                case "importMap":return "Добавить карту";
                 case "token":return "Карточка жетона";
                 case "combat":return "Порядок инициативы";
                 case "dice":return "Бросок кубиков";
@@ -273,7 +264,7 @@ namespace FoxTable
                 var row=Row(content); row.AddToClassList("list-item");
                 var labels=new VisualElement();labels.style.flexGrow=1;row.Add(labels);
                 Label(labels,t.name+(t.hidden || t.layer=="gm"?" · скрыт":"")+(t.layer=="map"?" · карта":""));
-                Label(labels,$"{t.hp}/{t.maxHp} HP · КД {t.ac} · инициатива {t.initiative}","muted");
+                Label(labels,t.kind=="object"?$"Объект карты · {t.size} × {t.size} кл.":$"{t.hp}/{t.maxHp} HP · КД {t.ac} · инициатива {t.initiative}","muted");
                 Button(row,"Открыть",()=>{selectedId=t.id;board.Select(t.id);OpenPanel("token");});
             }
             if(s.IsGm)
@@ -291,6 +282,7 @@ namespace FoxTable
             var s=client.State;
             var t=Array.Find(s.Active.tokens,v=>v.id==selectedId);
             if(t==null){Label(content,"Жетон удалён или скрыт мастером");return;}
+            if(t.kind=="object" && s.IsGm){ObjectCard(content,t);return;}
             bool editable=!client.IsPreview && (s.IsGm || (t.ownerId==s.selfId && t.layer=="tokens"));
             Button(content,"Быстрые действия",()=>OpenPanel("actions"));
             if(s.IsGm)Button(content,"Зрение, свет, слои и атака",()=>OpenPanel("profile"),"primary");
@@ -360,7 +352,8 @@ namespace FoxTable
         private void Dice(VisualElement content)
         {
             Label(content,client.IsLocal?"Кубики бросаются на телефоне. Результаты сохраняются в журнале.":"Кубики бросает сервер. Результат увидят все участники.","muted");
-            var expression=Field(content,"Формула","1d20+5");
+            var expression=Field(content,"Формула",diceFormula);
+            expression.RegisterValueChangedCallback(e=>diceFormula=e.newValue);
             var row=Row(content);
             foreach(int sides in new[]{4,6,8,10,12,20,100})
             {int value=sides;Button(row,"d"+value,()=>expression.value="1d"+value);}
@@ -372,42 +365,11 @@ namespace FoxTable
 
         private void Chat(VisualElement content)
         {
-            foreach(var m in client.State.messages.Reverse().Take(80).Reverse())
-            {
-                var item=new VisualElement();item.AddToClassList(m.kind=="roll"?"roll-message":m.kind=="combat"?"combat-message":"chat-message");
-                Label(item,m.name,"eyebrow");Label(item,m.text);content.Add(item);
-            }
+            journalScroll=content as ScrollView;
+            journalItems=new VisualElement();content.Add(journalItems);RefreshJournal();
             var field=Field(content,"Сообщение",chatDraft);
             field.RegisterValueChangedCallback(e=>chatDraft=e.newValue);
             Button(content,"Отправить",()=>{if(!string.IsNullOrWhiteSpace(field.value)){client.Act("chat","text",field.value);field.value="";chatDraft="";}},"primary");
-        }
-
-        private void Maps(VisualElement content)
-        {
-            var s=client.State;if(!s.IsGm)return;
-            foreach(var scene in s.scenes)
-            {
-                var row=Row(content);row.AddToClassList("list-item");
-                var label=Label(row,scene.name+(scene.id==s.sceneId?" · сейчас":""));label.style.flexGrow=1;
-                Button(row,"Открыть",()=>{client.Act("scene.switch","sceneId",scene.id);ClosePanel();});
-            }
-            var newName=Field(content,"Новая сцена","Следующий этаж");
-            Button(content,"+ Добавить сцену",()=>{client.Act("scene.add","name",newName.value);ClosePanel();});
-            Button(content,"Стены, двери и освещение",()=>OpenPanel("lighting"),"primary");
-            Label(content,"ТЕКУЩАЯ КАРТА","eyebrow");
-            var name=Field(content,"Название",s.Active.name);
-            var width=Number(content,"Ширина, клеток",s.Active.width);
-            var height=Number(content,"Высота, клеток",s.Active.height);
-            var feet=Number(content,"Футов в клетке",s.Active.cellFeet);
-            Button(content,"Сохранить размеры",()=>{client.Act("scene.update","name",name.value,"width",width.value,"height",height.value,"cellFeet",feet.value);ClosePanel();});
-            Check(content,"Показывать сетку",s.Active.grid,v=>client.Act("scene.update","grid",v));
-            Check(content,"Привязка к клеткам",s.Active.snap,v=>client.Act("scene.update","snap",v));
-            Check(content,"Туман войны",s.Active.fog,v=>client.Act("scene.update","fog",v));
-            Button(content,"Загрузить PNG / JPEG",PickMap,"primary");
-            Label(content,"Карта растягивается по размерам сцены. Размер файла — до 6 МБ.","muted");
-            Button(content,"Скрыть все клетки",()=>Confirm("Сбросить открытые области тумана?",()=>{client.Act("fog.reset");ClosePanel();}));
-            Button(content,"Очистить шаблоны",()=>client.Act("drawing.clear"));
-            Button(content,"Удалить сцену",()=>Confirm("Удалить текущую сцену?",()=>{client.Act("scene.delete");ClosePanel();}),"danger");
         }
 
         private void Room(VisualElement content)
@@ -429,6 +391,7 @@ namespace FoxTable
                 return;
             }
             Label(content,"КОМНАТА "+client.Session.code,"headline-small");
+            Button(content,"Выйти в меню, сохранить доступ",()=>{if(client.Leave(false)){ClosePanel();Lobby();}},"primary");
             Button(content,"Скопировать личный ключ восстановления",()=> {
                 GUIUtility.systemCopyBuffer=client.Session.secret;
                 ShowToast("Личный ключ скопирован. Сохраните его отдельно; не отправляйте игрокам.");
@@ -462,7 +425,9 @@ namespace FoxTable
         {
 #if UNITY_EDITOR
             string path=UnityEditor.EditorUtility.OpenFilePanel("Карта боя","","png,jpg,jpeg");
-            if(!string.IsNullOrEmpty(path))client.UploadMap(path);
+            if(!string.IsNullOrEmpty(path))
+            {try{PrepareMap(File.ReadAllBytes(path),path.EndsWith(".png",StringComparison.OrdinalIgnoreCase)?"image/png":"image/jpeg");}
+            catch(IOException){ShowToast("Не удалось открыть картинку");}}
 #elif UNITY_ANDROID
             try
             {
@@ -485,7 +450,7 @@ namespace FoxTable
             {
                 var image=JsonUtility.FromJson<GalleryImage>(json);
                 if(!string.IsNullOrEmpty(image.error)){ShowToast(image.error);return;}
-                client.UploadMap(Convert.FromBase64String(image.data),image.mime);
+                PrepareMap(Convert.FromBase64String(image.data),image.mime);
             }
             catch(Exception){ShowToast("Не удалось прочитать изображение");}
         }
@@ -501,6 +466,7 @@ namespace FoxTable
             if(client!=null){client.Changed-=StateChanged;client.Notice-=ShowToast;}
             if(downloadedMap!=null)Destroy(downloadedMap);
             if(settings!=null)Destroy(settings);
+            if(pendingTexture!=null)Destroy(pendingTexture);
         }
     }
 }

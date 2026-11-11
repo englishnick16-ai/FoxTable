@@ -61,6 +61,8 @@ namespace FoxTable
             if (type == "scene.add") {
                 Need(state.scenes.Length < 30, "Лимит: 30 сцен");
                 var added = NewScene(Text(b, "name", "Новая сцена"));
+                added.background=Text(b,"background","");
+                Need(added.background=="" || added.background=="blank", "Неизвестный фон");
                 state.scenes = Add(state.scenes, added); state.sceneId = added.id; return;
             }
             string sceneId = Text(b, "sceneId", state.sceneId);
@@ -79,7 +81,10 @@ namespace FoxTable
                     Need(s.tokens.Length < 100, "Лимит: 100 жетонов");
                     string kind = Text(b, "kind", "enemy");
                     Need(new[] { "hero", "enemy", "object" }.Contains(kind), "Неизвестный тип жетона");
-                    s.tokens = Add(s.tokens, NewToken(Text(b, "name", "Жетон"), kind)); break;
+                    var addedToken=NewToken(Text(b, "name", "Жетон"), kind);
+                    UpdateToken(addedToken,s,b);
+                    addedToken.x=Num(b,"x",0,s.width-addedToken.size);addedToken.y=Num(b,"y",0,s.height-addedToken.size);
+                    s.tokens = Add(s.tokens, addedToken); break;
                 case "token.move": case "token.update": case "token.delete": case "token.duplicate":
                 case "token.hp": case "token.attack": case "token.macro":
                     TokenAction(state, s, b, type); break;
@@ -140,6 +145,12 @@ namespace FoxTable
             s.daylight = Flag(b, "daylight", s.daylight); s.explorer = Flag(b, "explorer", s.explorer);
             s.sharedVision = Flag(b, "sharedVision", s.sharedVision); s.restrictMovement = Flag(b, "restrictMovement", s.restrictMovement);
             s.enforceSpeed = Flag(b, "enforceSpeed", s.enforceSpeed);
+            s.mapPixelsPerCell=Num(b,"mapPixelsPerCell",0,8192,s.mapPixelsPerCell);
+            s.mapOffsetX=Num(b,"mapOffsetX",-80,80,s.mapOffsetX);s.mapOffsetY=Num(b,"mapOffsetY",-80,80,s.mapOffsetY);
+            s.gridOpacity=Num(b,"gridOpacity",0,1,s.gridOpacity);
+            s.gridColor=Text(b,"gridColor",s.gridColor??"");
+            Need(s.gridColor=="" || Regex.IsMatch(s.gridColor,"^#[0-9a-fA-F]{6}$"),"Нужен цвет #RRGGBB");
+            s.background=Text(b,"background",s.background??"");Need(s.background=="" || s.background=="blank","Неизвестный фон");
             if (b.ContainsKey("mapId")) {
                 string map = Text(b, "mapId"); Need(Regex.IsMatch(map, "^([0-9a-f]{16})?$"), "Неверный ID карты"); s.mapId = map;
             }
@@ -174,6 +185,9 @@ namespace FoxTable
         private static void UpdateToken(TokenState t, SceneState s, Dictionary<string, object> b)
         {
             t.name = Text(b, "name", t.name);
+            t.artId=Text(b,"artId",t.artId??"",32);
+            Need(t.artId=="" || Regex.IsMatch(t.artId,"^[a-z][a-z0-9-]{0,31}$"),"Неверная модель");
+            t.rotation=(int)Num(b,"rotation",0,359,t.rotation);
             t.maxHp = (int)Num(b, "maxHp", 1, 9999, t.maxHp); t.hp = Math.Min(t.maxHp, (int)Num(b, "hp", 0, 9999, t.hp));
             t.ac = (int)Num(b, "ac", 0, 99, t.ac); t.initiative = (int)Num(b, "initiative", -100, 100, t.initiative);
             t.size = (int)Num(b, "size", 1, 4, t.size);

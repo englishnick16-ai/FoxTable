@@ -376,6 +376,8 @@ def apply_action(state, actor, b):
         gm(actor)
         require(len(state['scenes']) < 30, 'Лимит: 30 сцен')
         s = scene(text(b.get('name')))
+        s['background']=b.get('background','')
+        require(s['background'] in ('','blank'),'Неизвестный фон')
         state['scenes'].append(s)
         state['sceneId'] = s['id']
         return
@@ -400,6 +402,15 @@ def apply_action(state, actor, b):
                 s[field] = value
         if 'cellFeet' in b:
             s['cellFeet'] = int(number(b['cellFeet'], 1, 100))
+        for field, low, high in [('mapPixelsPerCell',0,8192),('mapOffsetX',-80,80),('mapOffsetY',-80,80),('gridOpacity',0,1)]:
+            if field in b:
+                s[field]=number(b[field],low,high)
+        if 'gridColor' in b:
+            require(isinstance(b['gridColor'],str) and re.fullmatch(r'#[0-9a-fA-F]{6}|',b['gridColor']),'Нужен цвет #RRGGBB')
+            s['gridColor']=b['gridColor']
+        if 'background' in b:
+            require(b['background'] in ('','blank'),'Неизвестный фон')
+            s['background']=b['background']
         for field in ('grid', 'snap', 'fog', 'lighting', 'daylight', 'explorer', 'sharedVision', 'restrictMovement', 'enforceSpeed'):
             if field in b:
                 require(type(b[field]) is bool, 'Нужно логическое значение')
@@ -416,6 +427,10 @@ def apply_action(state, actor, b):
         require(t['kind'] in ('hero', 'enemy', 'object'), 'Неизвестный тип жетона')
         s['tokens'].append(t)
         upgrade(state)
+        fields=dict(b,type='token.update',tokenId=t['id'])
+        apply_action(state,actor,fields)
+        t['x']=number(b.get('x',0),0,s['width']-t['size'])
+        t['y']=number(b.get('y',0),0,s['height']-t['size'])
     elif kind in ('token.move', 'token.update', 'token.delete', 'token.duplicate', 'token.hp', 'token.attack', 'token.macro'):
         t = next((t for t in s['tokens'] if t['id'] == b.get('tokenId')), None)
         require(t is not None, 'Жетон не найден', 404)
@@ -461,6 +476,11 @@ def apply_action(state, actor, b):
                 require(set(b) <= {'type', 'requestId', 'sceneId', 'tokenId', 'hp', 'conditions'}, 'Только HP и состояния своего жетона', 403)
             if 'name' in b:
                 t['name'] = text(b['name'])
+            if 'artId' in b:
+                require(isinstance(b['artId'],str) and re.fullmatch(r'[a-z][a-z0-9-]{0,31}|',b['artId']),'Неверная модель')
+                t['artId']=b['artId']
+            if 'rotation' in b:
+                t['rotation']=int(number(b['rotation'],0,359))
             for field, lo, hi in [('maxHp', 1, 9999), ('hp', 0, 9999), ('ac', 0, 99), ('initiative', -100, 100),
                     ('visionRange',0,300), ('nightVision',0,300), ('lightRadius',0,300),
                     ('auraFeet',0,100), ('speed',0,300), ('tempHp',0,9999),
