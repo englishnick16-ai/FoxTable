@@ -37,3 +37,11 @@ Unity 6000.0.85f2 остановил импорт: `com.unity.modules.textcorefo
 Сборка №3 (`c83171954b75496af99220f0ae1bb4fb0697880b`) успешно завершила Unity, IL2CPP и Gradle и создала APK (19 955 728 байт). Проверены ZIP CRC, package `com.foxtable.mobile`, versionName `0.2.0`, versionCode `3`, minSdk `26`, targetSdk `37`, ARM64, наличие `libunity.so`/`libil2cpp.so` и подписи APK v2. Это проверка упаковки, не запуск на устройстве.
 
 Проверка DEX выявила отсутствие класса `com.foxtable.FoxGallery` при наличии activity в манифесте. Java лежал в устаревшем каталоге `src/com`, который не был включён в source set Gradle. Плагин переведён на `src/main/java` и `src/main/AndroidManifest.xml`; добавлен собственный `build.gradle` с параметрами Unity и consumer keep rule для вызова через JNI. APK №3 не выдаётся как итоговый: требуется повторная сборка и проверка наличия класса в DEX.
+
+## Итоговая сборка №4
+
+Исходный commit `3bbb932b92aa485ec9983df5a27f65c1cd5cd152`. Unity, IL2CPP и Gradle завершились успешно; APK скачан. Файл: 19 956 960 байт, SHA-256 `5bbf795572f6d4dffef972347fa317426ae64aeddc9d11892b36cd2b61b10410`. Package `com.foxtable.mobile`, versionName `0.2.0`, versionCode `4`, minSdk `26`, фактический targetSdk `37`, ARM64, подпись APK v2. Поле SDK облачной конфигурации было установлено в 35, но автоматический выбор target API в Unity дал 37; при воспроизведении ориентироваться на AndroidManifest итогового пакета.
+
+`Tools/verify_apk.py` прошёл: целый ZIP, библиотеки Unity/IL2CPP, фактический класс FoxGallery в DEX, callback OnAndroidImage в metadata. Androguard подтвердил activity, методы `open`/`onActivityResult`, версии, разрешение интернета и наличие подписи. Проверка на APK №3 до исправления воспроизводит отсутствие класса. Установка, UI и игровой runtime ещё не проверены; онлайн-сервер не развёрнут.
+
+Артефакты: https://cloud.unity.com/organizations/9072467250824/projects/da845b0f-e87a-471f-9708-c19d9fbae20d/cloud-build/buildtargets/foxtable-android-apk/builds/4/artifacts
