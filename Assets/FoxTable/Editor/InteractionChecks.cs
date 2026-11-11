@@ -65,6 +65,13 @@ namespace FoxTable.Editor
             Check(Vector2.Distance((Vector2)(world.transform.position-before),new Vector2(35,20))<.01f,"remaining finger continues to pan after pinch");
             Pointer<PointerUpEvent>(board,"Up",1,Vector2.zero);
             board.Fit();board.Tool="select";var originalPosition=new Vector2(t.x,t.y);var origin=Point(board,t.x+.5f,t.y+.5f);var end=Point(board,t.x+2.5f,t.y+1.5f);
+            string selected=null;board.Selected=id=>selected=id;
+            Pointer<PointerDownEvent>(board,"Down",1,origin);Pointer<PointerUpEvent>(board,"Up",1,Vector2.zero);
+            Check(selected==t.id,"tap still selects a figure when touch release has no position");
+            Vector2 placed=new Vector2(-1,-1);board.Placed=p=>placed=p;board.Tool="place";
+            Pointer<PointerDownEvent>(board,"Down",1,Point(board,5,6));Pointer<PointerUpEvent>(board,"Up",1,Vector2.zero);
+            Check(Vector2.Distance(placed,new Vector2(5,6))<.001f,"tap places miniature at touched cell instead of origin on positionless release");
+            board.Tool="select";
             Pointer<PointerDownEvent>(board,"Down",1,origin);Pointer<PointerMoveEvent>(board,"Move",1,end);Pointer<PointerUpEvent>(board,"Up",1,Vector2.zero);
             Check(commands.Count==1 && commands[0].Key=="token.move","drag sends exactly one move command");
             var move=Json.Fields(commands[0].Value);Check(Mathf.Abs(Convert.ToSingle(move["x"])-(t.x+2))<.01f && Mathf.Abs(Convert.ToSingle(move["y"])-(t.y+1))<.01f,"drag uses start position and retains snapped endpoint");
