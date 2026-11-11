@@ -45,3 +45,9 @@ Unity 6000.0.85f2 остановил импорт: `com.unity.modules.textcorefo
 `Tools/verify_apk.py` прошёл: целый ZIP, библиотеки Unity/IL2CPP, фактический класс FoxGallery в DEX, callback OnAndroidImage в metadata. Androguard подтвердил activity, методы `open`/`onActivityResult`, версии, разрешение интернета и наличие подписи. Проверка на APK №3 до исправления воспроизводит отсутствие класса. Установка, UI и игровой runtime ещё не проверены; онлайн-сервер не развёрнут.
 
 Артефакты: https://cloud.unity.com/organizations/9072467250824/projects/da845b0f-e87a-471f-9708-c19d9fbae20d/cloud-build/buildtargets/foxtable-android-apk/builds/4/artifacts
+
+## Сборка 0.3.0 с локальной игрой
+
+№6: commit `4f11e6167ce3888a2eee3746ab2ee47e6054f9f8`, та же Android-конфигурация, pre-export `FoxTable.Editor.FoxTableBuild.Prepare`. В Prepare запускаются LocalGameChecks: 33 проверки прошли, затем build successful. Файл скачан и назван `FoxTable-0.3.0.apk`; versionName проверен в манифесте, versionCode=6. В настройках Cloud Build имя выходного файла ещё может содержать 0.2.0 — версия приложения задаётся Prepare и равна 0.3.0. №5 отменена до компиляции после исправления System.Random в проверках.
+
+Хеш APK и ограничения — в Docs/VALIDATION.md. Регион, тариф, доступы и настройки подписи не менялись; сертификат 0.3.0 совпадает с 0.2.0. Установка на Android пока не проверена.
