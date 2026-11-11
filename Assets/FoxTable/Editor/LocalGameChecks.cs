@@ -20,7 +20,7 @@ namespace FoxTable.Editor
         public static void Run()
         {
             checks = 0;
-            var game = new LocalGame(new Random(42));
+            var game = new LocalGame(new System.Random(42));
             var state = LocalGame.Create();
             void Act(string type, params object[] pairs) {
                 var b = Json.Fields(pairs); b["type"] = type; state = game.ApplyCopy(state, b);
