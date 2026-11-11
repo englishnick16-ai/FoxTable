@@ -184,7 +184,7 @@ namespace FoxTable
                 lastRevision=state.revision;
                 board.SetState(state);
                 if(panel=="chat")RefreshJournal();
-                if(panel=="combat")OpenPanel("combat");
+                if(panel=="combat" || panel=="lighting")OpenPanel(panel);
                 RefreshSelection();
             }
             string key=state.Active.id+":"+state.Active.mapId+":"+state.Active.background;
@@ -234,7 +234,7 @@ namespace FoxTable
             }
         }
 
-        private static string PanelTitle(string kind)
+        private string PanelTitle(string kind)
         {
             switch(kind)
             {
@@ -249,8 +249,8 @@ namespace FoxTable
                 case "chat":return "Журнал приключения";
                 case "maps":return "Сцены и карты";
                 case "actions":return "Быстрые действия";
-                case "profile":return "Зрение, свет и бой";
-                case "lighting":return "Стены, двери и освещение";
+                case "profile":return client.IsLocal?"Слои, ауры и атака":"Зрение, свет и бой";
+                case "lighting":return client.IsLocal?"Стены и двери":"Стены, двери и освещение";
                 case "vision":return "Глазами игрока";
                 default:return "Комната и участники";
             }
@@ -267,14 +267,7 @@ namespace FoxTable
                 Label(labels,t.kind=="object"?$"Объект карты · {t.size} × {t.size} кл.":$"{t.hp}/{t.maxHp} HP · КД {t.ac} · инициатива {t.initiative}","muted");
                 Button(row,"Открыть",()=>{selectedId=t.id;board.Select(t.id);OpenPanel("token");});
             }
-            if(s.IsGm)
-            {
-                var name=Field(content,"Новый жетон","Гоблин");
-                var row=Row(content);
-                Button(row,"+ Противник",()=>client.Act("token.add","name",name.value,"kind","enemy"));
-                Button(row,"+ Герой",()=>client.Act("token.add","name",name.value,"kind","hero"));
-                Button(content,"+ Объект карты",()=>client.Act("token.add","name",name.value,"kind","object"));
-            }
+            if(s.IsGm)Button(content,"Добавить модель из каталога",()=>OpenPanel("catalog"),"primary");
         }
 
         private void Token(VisualElement content)
@@ -285,7 +278,7 @@ namespace FoxTable
             if(t.kind=="object" && s.IsGm){ObjectCard(content,t);return;}
             bool editable=!client.IsPreview && (s.IsGm || (t.ownerId==s.selfId && t.layer=="tokens"));
             Button(content,"Быстрые действия",()=>OpenPanel("actions"));
-            if(s.IsGm)Button(content,"Зрение, свет, слои и атака",()=>OpenPanel("profile"),"primary");
+            if(s.IsGm)Button(content,client.IsLocal?"Слои, ауры и атака":"Зрение, свет, слои и атака",()=>OpenPanel("profile"),"primary");
             var name=Field(content,"Имя",t.name);name.SetEnabled(s.IsGm);
             var row=Row(content);
             var hp=Number(row,"HP",t.hp);hp.SetEnabled(editable);
@@ -310,15 +303,18 @@ namespace FoxTable
                 size=Number(content,"Размер в клетках (1–4)",t.size);
                 color=Field(content,"Цвет #RRGGBB",t.color);
                 Check(content,"Скрыт от игроков",hidden,v=>hidden=v);
+                if(!client.IsLocal)
+                {
                 members=new List<Member>{new Member{id="",name="Только мастер"}};members.AddRange(s.members);
                 int index=Mathf.Max(0,members.FindIndex(m=>m.id==t.ownerId));
                 owner=new PopupField<string>("Владелец",members.Select(m=>m.name+" · "+(m.id==""?"—":m.id.Substring(0,4))).ToList(),index);
                 content.Add(owner);
+                }
             }
             if(editable) Button(content,"Сохранить жетон",()=> {
                 var fields=new List<object>{"tokenId",t.id,"hp",hp.value,"conditions",conditions.ToArray()};
                 if(s.IsGm) fields.AddRange(new object[]{"name",name.value,"maxHp",max.value,"ac",ac.value,
-                    "initiative",initiative.value,"size",size.value,"color",color.value,"ownerId",members[owner.index].id,"hidden",hidden});
+                    "initiative",initiative.value,"size",size.value,"color",color.value,"ownerId",client.IsLocal?t.ownerId:members[owner.index].id,"hidden",hidden});
                 client.Act("token.update",fields.ToArray());ClosePanel();
             },"primary");
             if(s.IsGm) Button(content,"Удалить жетон",()=>Confirm("Удалить «"+t.name+"»?",()=> {

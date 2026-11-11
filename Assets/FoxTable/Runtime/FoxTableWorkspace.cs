@@ -137,7 +137,7 @@ namespace FoxTable
             Button(content,"Убрать шаблоны",()=>{client.Act("drawing.clear");ClosePanel();});
             Label(content,"СТЕНЫ И ДВЕРИ","eyebrow");row=Row(content);
             Button(row,"Стена",()=>Use("wall"));Button(row,"Дверь",()=>Use("door"));Button(row,"Окно",()=>Use("window"));
-            Button(content,"Список преград и освещение →",()=>OpenPanel("lighting"));
+            Button(content,client.IsLocal?"Список стен и дверей →":"Список преград и освещение →",()=>OpenPanel("lighting"));
             Label(content,"ВЫБИРАТЬ НА КАРТЕ","eyebrow");
             var layer=new PopupField<string>("Слой",new List<string>{"Все объекты","Только фигуры","Только декор"},board.EditingLayer=="tokens"?1:board.EditingLayer=="map"?2:0);
             content.Add(layer);layer.RegisterValueChangedCallback(e=>board.EditingLayer=new[]{"all","tokens","map"}[layer.index]);

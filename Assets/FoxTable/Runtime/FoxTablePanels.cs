@@ -52,7 +52,7 @@ namespace FoxTable
                 Button(quick,"Повернуть 45°",()=>{var current=Array.Find(client.State.Active.tokens,v=>v.id==t.id);if(current!=null)client.Act("token.update","tokenId",t.id,"rotation",(current.rotation+45)%360);});
                 Button(quick,t.locked?"Открепить":"Закрепить",()=>{client.Act("token.update","tokenId",t.id,"locked",!t.locked);ClosePanel();});
                 Button(quick,t.hidden?"Показать":"Скрыть",()=>{client.Act("token.update","tokenId",t.id,"hidden",!t.hidden);ClosePanel();});
-                Button(content,"Зрение, свет, слои и действия",()=>OpenPanel("profile"));
+                Button(content,client.IsLocal?"Слои, ауры и атака":"Зрение, свет, слои и действия",()=>OpenPanel("profile"));
                 Button(content,"Дублировать жетон",()=>{client.Act("token.duplicate","tokenId",t.id);ClosePanel();});
             }
         }
@@ -63,12 +63,16 @@ namespace FoxTable
             var t=Array.Find(s.Active.tokens,v=>v.id==selectedId);
             if(t==null)return;
             Label(content,t.name,"headline-small");
-            Label(content,"ЗРЕНИЕ И СВЕТ · ФУТЫ","eyebrow");
-            var vision=Number(content,"Дальность зрения",t.visionRange);
-            var night=Number(content,"Тёмное зрение",t.nightVision);
-            var light=Number(content,"Радиус света",t.lightRadius);
+            IntegerField vision=null,night=null,light=null;
+            if(!client.IsLocal)
+            {
+                Label(content,"ЗРЕНИЕ И СВЕТ · ФУТЫ","eyebrow");
+                vision=Number(content,"Дальность зрения",t.visionRange);
+                night=Number(content,"Тёмное зрение",t.nightVision);
+                light=Number(content,"Радиус света",t.lightRadius);
+                Label(content,"Факел: свет 20–40 фт. Стены перекрывают обзор и свет.","muted");
+            }
             var aura=Number(content,"Радиус ауры",t.auraFeet);
-            Label(content,"Факел: свет 20–40 фт. Тёмное зрение действует в пределах общей дальности зрения. Стены перекрывают оба.","muted");
             Label(content,"СЛОИ И ПЕРЕМЕЩЕНИЕ","eyebrow");
             var layers=new[]{"tokens","map","gm"};
             var layer=new PopupField<string>("Слой",new List<string>{"Жетоны","Объекты карты","Только мастер"},Mathf.Max(0,Array.IndexOf(layers,t.layer)));
@@ -95,8 +99,8 @@ namespace FoxTable
                     if(string.IsNullOrWhiteSpace(names[i].value) && string.IsNullOrWhiteSpace(formulas[i].value))continue;
                     macros.Add(Json.Fields("name",names[i].value,"formula",formulas[i].value));
                 }
-                client.Act("token.update","tokenId",t.id,"visionRange",vision.value,"nightVision",night.value,
-                    "lightRadius",light.value,"auraFeet",aura.value,"layer",layers[layer.index],"locked",locked,
+                client.Act("token.update","tokenId",t.id,"visionRange",vision?.value??t.visionRange,"nightVision",night?.value??t.nightVision,
+                    "lightRadius",light?.value??t.lightRadius,"auraFeet",aura.value,"layer",layers[layer.index],"locked",locked,
                     "speed",speed.value,"tempHp",temporary.value,"attackBonus",attack.value,"damage",damage.value,
                     "attackRange",range.value,"macros",macros);
                 ClosePanel();
@@ -108,6 +112,8 @@ namespace FoxTable
             var s=client.State;if(!s.IsGm)return;
             var scene=s.Active;
             if(client.IsLocal) Label(content,"Локально открыт стол мастера: он видит всю карту. Динамический обзор игроков и ограничения движения используются в онлайн-комнатах.","muted");
+            if(!client.IsLocal)
+            {
             Check(content,"Динамическая видимость",scene.lighting,v=>client.Act("scene.update","lighting",v));
             Check(content,"Дневное освещение",scene.daylight,v=>client.Act("scene.update","daylight",v));
             Check(content,"Память исследованных мест",scene.explorer,v=>client.Act("scene.update","explorer",v));
@@ -115,6 +121,7 @@ namespace FoxTable
             Check(content,"Стены запрещают проход",scene.restrictMovement,v=>client.Act("scene.update","restrictMovement",v));
             Check(content,"Учитывать скорость и ход в бою",scene.enforceSpeed,v=>client.Act("scene.update","enforceSpeed",v));
             Label(content,"Зрение и свет задаются в настройках жетона. Назначьте герою владельца. Для ночного подземелья выключите дневной свет.","muted");
+            }
             Label(content,"НАРИСОВАТЬ ПРЕГРАДУ","eyebrow");
             var row=Row(content);
             void Draw(string tool) {SetTool(tool);ClosePanel();ShowToast("Проведите по карте. Концы привязываются к узлам сетки.");}
@@ -136,7 +143,7 @@ namespace FoxTable
                 Button(item,"Удалить отрезок",()=>client.Act("barrier.delete","barrierId",wall.id));
             }
             if(!client.IsLocal)Button(content,"Посмотреть глазами игрока",()=>OpenPanel("vision"),"primary");
-            Button(content,"Сбросить память исследования",()=>Confirm("Забыть исследованные места для всех игроков?",()=>{client.Act("vision.reset");ClosePanel();}));
+            if(!client.IsLocal)Button(content,"Сбросить память исследования",()=>Confirm("Забыть исследованные места для всех игроков?",()=>{client.Act("vision.reset");ClosePanel();}));
             Button(content,"Удалить все преграды",()=>Confirm("Удалить все стены, двери и окна этой сцены?",()=>{client.Act("barrier.clear");ClosePanel();}),"danger");
         }
 
