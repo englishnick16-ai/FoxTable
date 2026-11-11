@@ -8,10 +8,10 @@ namespace FoxTable
         public static Rect ImageCells(SceneState scene, int pixelWidth, int pixelHeight)
         {
             if(pixelWidth<=0 || pixelHeight<=0) return new Rect(0,0,scene.width,scene.height);
-            float ppc=scene.mapPixelsPerCell;
+            double ppc=scene.mapPixelsPerCell;
             bool automatic=ppc<=0;
-            if(automatic)ppc=Mathf.Max((float)pixelWidth/scene.width,(float)pixelHeight/scene.height);
-            float width=pixelWidth/ppc,height=pixelHeight/ppc;
+            if(automatic)ppc=Math.Max((double)pixelWidth/scene.width,(double)pixelHeight/scene.height);
+            float width=(float)(pixelWidth/ppc),height=(float)(pixelHeight/ppc);
             return new Rect(scene.mapOffsetX+(automatic?(scene.width-width)/2:0),
                 scene.mapOffsetY+(automatic?(scene.height-height)/2:0),width,height);
         }
