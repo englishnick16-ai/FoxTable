@@ -78,6 +78,7 @@ namespace FoxTable
 
         public void SetState(RoomState value)
         {
+            bool layoutChanged=scene==null || scene.id!=value.Active.id || scene.width!=value.Active.width || scene.height!=value.Active.height || scene.mapId!=value.Active.mapId;
             state = value;
             scene = value.Active;
             revealed.Clear(); currentCells.Clear(); exploredCells.Clear();
@@ -92,6 +93,7 @@ namespace FoxTable
                 ResetGesture();
                 Fit();
             }
+            else if(layoutChanged){ResetGesture();needsFit=true;Fit();}
             if(selectedId!=null && !scene.tokens.Any(t=>t.id==selectedId)){selectedId=null;Selected?.Invoke(null);}
             SyncPieces();
             Refresh();

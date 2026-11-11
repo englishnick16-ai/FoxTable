@@ -193,7 +193,7 @@ namespace FoxTable
                 loadedMap=key;
                 if(mapRequest!=null) StopCoroutine(mapRequest);
                 if(downloadedMap!=null) {Destroy(downloadedMap);downloadedMap=null;}
-                board.SetMap(state.Active.background=="blank"?null:Resources.Load<Texture2D>("Sanctuary"));
+                board.SetMap(state.Active.background=="blank" || !string.IsNullOrEmpty(state.Active.mapId)?null:Resources.Load<Texture2D>("Sanctuary"));
                 if(!string.IsNullOrEmpty(state.Active.mapId))
                     mapRequest=StartCoroutine(client.DownloadMap(state.Active.mapId, texture=> {
                         if(loadedMap==key && board!=null) {downloadedMap=texture;board.SetMap(texture);}
