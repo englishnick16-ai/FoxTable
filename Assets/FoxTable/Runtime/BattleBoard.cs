@@ -13,7 +13,15 @@ namespace FoxTable
         public Action<Vector2> Placed;
         private readonly RoomClient client;
         private readonly Image map;
-        private readonly VisualElement markings, pieces;
+        private readonly VisualElement world, markings, pieces, overlay;
+        private readonly Image fogImage;
+        private Texture2D fogTexture;
+        private Color32[] fogPixels;
+        private TokenState[] hitOrder=Array.Empty<TokenState>();
+        private readonly Action<string,object[]> dispatch;
+        private sealed class PendingMove {public Vector2 point;public int revision;public float time;}
+        private readonly Dictionary<string,PendingMove> pendingMoves=new Dictionary<string,PendingMove>();
+        private bool panOnly, labelsVisible;
         private Texture2D mapTexture;
         private readonly Dictionary<string,PieceView> views=new Dictionary<string,PieceView>();
         private sealed class PieceView { public VisualElement root,hp;public Image art;public Label letter,label; }
@@ -37,23 +45,34 @@ namespace FoxTable
         private const float CellSize = 48;
         private float Unit => CellSize * zoom;
 
-        public BattleBoard(RoomClient client)
+        public BattleBoard(RoomClient client,Action<string,object[]> dispatch=null)
         {
             this.client = client;
+            this.dispatch=dispatch ?? ((type,args)=>client?.Act(type,args));
             name = "battle-board";
             style.flexGrow = 1;
+            style.minHeight=100;
+            world=new VisualElement {name="board-world",pickingMode=PickingMode.Ignore,usageHints=UsageHints.DynamicTransform | UsageHints.GroupTransform};
+            world.style.position=Position.Absolute;world.style.left=0;world.style.top=0;
+            world.style.transformOrigin=new TransformOrigin(0,0,0);
+            Add(world);
             style.overflow = Overflow.Hidden;
             style.backgroundColor = new Color(0.045f, 0.06f, 0.065f);
             map = new Image { pickingMode = PickingMode.Ignore, scaleMode = ScaleMode.StretchToFill };
             map.style.position = Position.Absolute;
-            Add(map);
+            world.Add(map);
             markings = new VisualElement { pickingMode = PickingMode.Ignore };
             Stretch(markings);
             markings.generateVisualContent += Paint;
-            Add(markings);
+            world.Add(markings);
+            fogImage=new Image {name="board-fog",pickingMode=PickingMode.Ignore,scaleMode=ScaleMode.StretchToFill};
+            Stretch(fogImage);world.Add(fogImage);
             pieces = new VisualElement { pickingMode = PickingMode.Ignore };
             Stretch(pieces);
-            Add(pieces);
+            world.Add(pieces);
+            overlay=new VisualElement {pickingMode=PickingMode.Ignore};Stretch(overlay);Add(overlay);
+            overlay.generateVisualContent+=PaintOverlay;
+            RegisterCallback<DetachFromPanelEvent>(e=>{ResetGesture();if(fogTexture!=null)UnityEngine.Object.Destroy(fogTexture);fogTexture=null;});
             RegisterCallback<PointerDownEvent>(Down);
             RegisterCallback<PointerMoveEvent>(Move);
             RegisterCallback<PointerUpEvent>(Up);
@@ -65,8 +84,12 @@ namespace FoxTable
             });
             RegisterCallback<GeometryChangedEvent>(e => { if (scene != null) {if(needsFit)Fit();else Refresh();} });
             schedule.Execute(() => {
-                if (state?.effect != null && DateTimeOffset.UtcNow.ToUnixTimeSeconds()-state.effect.timestamp < 3)
-                    markings.MarkDirtyRepaint();
+                foreach(var id in pendingMoves.Keys.ToArray())if(Time.unscaledTime-pendingMoves[id].time>10){
+                    pendingMoves.Remove(id);var token=scene==null?null:Array.Find(scene.tokens,t=>t.id==id);
+                    if(token!=null)UpdatePiecePosition(token,new Vector2(token.x,token.y));
+                }
+                if (state?.effect != null && DateTimeOffset.UtcNow.ToUnixTimeSeconds()-state.effect.timestamp < 4 || state?.ping!=null && DateTimeOffset.UtcNow.ToUnixTimeSeconds()-state.ping.timestamp<6)
+                    overlay.MarkDirtyRepaint();
             }).Every(60);
         }
 
@@ -95,12 +118,17 @@ namespace FoxTable
             }
             else if(layoutChanged){ResetGesture();needsFit=true;Fit();}
             if(selectedId!=null && !scene.tokens.Any(t=>t.id==selectedId)){selectedId=null;Selected?.Invoke(null);}
-            SyncPieces();
+            foreach(var id in pendingMoves.Keys.ToArray())
+                if(state.revision>pendingMoves[id].revision || !scene.tokens.Any(t=>t.id==id))pendingMoves.Remove(id);
+            world.style.width=scene.width*CellSize;world.style.height=scene.height*CellSize;
+            SyncPieces();UpdateMapGeometry();UpdateFog();
+            UpdateSelection();foreach(var view in views.Values)view.label.style.display=Unit>22?DisplayStyle.Flex:DisplayStyle.None;
+            markings.MarkDirtyRepaint();overlay.MarkDirtyRepaint();
             Refresh();
         }
 
-        public void SetMap(Texture2D texture) { mapTexture=texture;map.image = texture;Refresh(); }
-        public void Select(string id) { selectedId = id; Refresh(); }
+        public void SetMap(Texture2D texture) { mapTexture=texture;map.image = texture;UpdateMapGeometry();Refresh(); }
+        public void Select(string id) { selectedId = id; UpdateSelection(); }
 
         public void Fit()
         {
@@ -125,14 +153,19 @@ namespace FoxTable
 
         private Vector2 ToCell(Vector2 local) => (local-offset)/Unit;
         private Vector2 ToLocal(float x, float y) => offset+new Vector2(x,y)*Unit;
+        private static Vector2 World(float x,float y)=>new Vector2(x,y)*CellSize;
 
         private TokenState Hit(Vector2 p)
         {
             if (scene == null) return null;
-            foreach(var t in scene.tokens.OrderBy(t=>t.layer=="map"?0:t.layer=="gm"?2:1).Reverse())
+            for(int i=hitOrder.Length-1;i>=0;i--)
             {
+                var t=hitOrder[i];
                 if(EditingLayer!="all" && t.layer!=EditingLayer)continue;
-                if (new Rect(t.x,t.y,t.size,t.size).Contains(p)) return t;
+                // A minimum touch target makes a one-cell figure selectable while zoomed out.
+                float pad=Mathf.Max(0,(28/Unit-t.size)/2);
+                var point=pendingMoves.TryGetValue(t.id,out var pending)?pending.point:new Vector2(t.x,t.y);
+                if(new Rect(point.x-pad,point.y-pad,t.size+pad*2,t.size+pad*2).Contains(p))return t;
             }
             return null;
         }
@@ -145,17 +178,18 @@ namespace FoxTable
             this.CapturePointer(e.pointerId);
             if (pointers.Count>=2)
             {
-                var points = new List<Vector2>(pointers.Values);
+                RestoreDragPreview();
+                GetPair(out var first,out var second);
                 pinching = true;
-                pinchDistance = Mathf.Max(1, Vector2.Distance(points[0],points[1]));
+                pinchDistance = Mathf.Max(1, Vector2.Distance(first,second));
                 pinchZoom=zoom;
-                pinchCenter=(points[0]+points[1])/2;
+                pinchCenter=(first+second)/2;
                 pinchWorld=ToCell(pinchCenter);
                 dragId=null;
                 measuring=false;
                 return;
             }
-            moved=false;
+            moved=false;panOnly=false;
             start=local;
             anchor=ToCell(local);
             panStart=offset;
@@ -166,9 +200,9 @@ namespace FoxTable
                 var t=Hit(anchor);
                 if (t!=null)
                 {
-                    selectedId=t.id;
-                    if (!client.IsPreview && !t.locked && (state.IsGm || (t.ownerId==state.selfId && t.layer=="tokens")))
-                    { dragId=t.id; dragPosition=dragOrigin=new Vector2(t.x,t.y); }
+                    Select(t.id);
+                    if (!(client?.IsPreview??false) && !t.locked && (state.IsGm || (t.ownerId==state.selfId && t.layer=="tokens")))
+                    { dragId=t.id; dragPosition=dragOrigin=pendingMoves.TryGetValue(t.id,out var pending)?pending.point:new Vector2(t.x,t.y); }
                 }
                 Refresh();
             }
@@ -184,15 +218,15 @@ namespace FoxTable
             pointers[e.pointerId]=local;
             if (pinching && pointers.Count>=2)
             {
-                var points=new List<Vector2>(pointers.Values);
-                zoom=Mathf.Clamp(pinchZoom*Vector2.Distance(points[0],points[1])/pinchDistance,0.05f,3f);
-                offset=(points[0]+points[1])/2-pinchWorld*Unit;
+                GetPair(out var first,out var second);
+                zoom=Mathf.Clamp(pinchZoom*Vector2.Distance(first,second)/pinchDistance,0.05f,3f);
+                offset=(first+second)/2-pinchWorld*Unit;
                 Refresh();
                 return;
             }
             if (pinching) return;
             moved |= Vector2.Distance(local,start)>7;
-            if (Tool=="pan" || Tool=="place" || (Tool=="select" && dragId==null)) offset=panStart+local-start;
+            if (panOnly || Tool=="pan" || Tool=="place" || (Tool=="select" && dragId==null)) offset=panStart+local-start;
             else if (dragId!=null && moved)
             {
                 var t=Array.Find(scene.tokens,v=>v.id==dragId);
@@ -200,6 +234,7 @@ namespace FoxTable
                 dragPosition=dragOrigin+ (local-start)/Unit;
                 dragPosition.x=Mathf.Clamp(dragPosition.x,0,scene.width-t.size);
                 dragPosition.y=Mathf.Clamp(dragPosition.y,0,scene.height-t.size);
+                UpdatePiecePosition(t,dragPosition);
             }
             else if (measuring)
             {
@@ -215,12 +250,18 @@ namespace FoxTable
         private void Up(PointerUpEvent e)
         {
             if (!pointers.ContainsKey(e.pointerId)) return;
-            var local=this.WorldToLocal(e.position);
+            // Touch release can have an unset position. Use the last tracked point.
+            var local=pointers[e.pointerId];
             pointers.Remove(e.pointerId);
             this.ReleasePointer(e.pointerId);
             if (pinching)
             {
-                if (pointers.Count==0) ResetGesture();
+                if(pointers.Count==0)ResetGesture();
+                else {
+                    // Continue panning with the remaining finger instead of requiring both to lift.
+                    foreach(var point in pointers.Values){start=point;break;}
+                    panStart=offset;pinching=false;panOnly=true;moved=true;dragId=null;measuring=false;
+                }
                 return;
             }
             if (Tool=="select" && !moved)
@@ -228,16 +269,21 @@ namespace FoxTable
                 var picked=Hit(ToCell(local));
                 selectedId=picked?.id;Selected?.Invoke(selectedId);
             }
-            if(Tool=="place" && !moved && !client.IsPreview)Placed?.Invoke(ToCell(local));
-            if (dragId!=null && moved)
-                client.Act("token.move", "tokenId",dragId,"x",dragPosition.x,"y",dragPosition.y);
+            if(Tool=="place" && !moved && !(client?.IsPreview??false))Placed?.Invoke(ToCell(local));
+            if (dragId!=null && moved) {
+                var point=scene.snap?new Vector2(Mathf.Floor(dragPosition.x+.5f),Mathf.Floor(dragPosition.y+.5f)):dragPosition;
+                pendingMoves[dragId]=new PendingMove {point=point,revision=state.revision,time=Time.unscaledTime};
+                var token=Array.Find(scene.tokens,t=>t.id==dragId);if(token!=null)UpdatePiecePosition(token,point);
+                dispatch("token.move",new object[]{"tokenId",dragId,"x",point.x,"y",point.y});
+                Selected?.Invoke(dragId);
+            }
             if (measuring && moved && Tool!="measure" && state.IsGm)
             {
                 var end=ToCell(local);
                 bool barrier=Tool=="wall" || Tool=="door" || Tool=="window";
                 var from=anchor;
                 if(barrier && scene.snap) {from=new Vector2(Mathf.Round(from.x),Mathf.Round(from.y));end=new Vector2(Mathf.Round(end.x),Mathf.Round(end.y));}
-                client.Act(barrier?"barrier.add":"drawing.add",barrier?"kind":"shape",Tool,
+                Send(barrier?"barrier.add":"drawing.add",barrier?"kind":"shape",Tool,
                     "x",Mathf.Clamp(from.x,0,scene.width),"y",Mathf.Clamp(from.y,0,scene.height),
                     "ex",Mathf.Clamp(end.x,0,scene.width),"ey",Mathf.Clamp(end.y,0,scene.height));
             }
@@ -254,30 +300,46 @@ namespace FoxTable
                     float distance=Vector2.Distance(point,a+delta*t);
                     if(distance<nearest){nearest=distance;closest=wall;}
                 }
-                if(closest!=null)client.Act("door.toggle","barrierId",closest.id);
+                if(closest!=null)Send("door.toggle","barrierId",closest.id);
                 else Hint?.Invoke("Нажмите на видимую дверь рядом с героем");
             }
             if (Tool=="ping")
             {
                 var cell=ToCell(local);
-                client.Act("ping","x",Mathf.Clamp(cell.x,0,scene.width),"y",Mathf.Clamp(cell.y,0,scene.height));
+                Send("ping","x",Mathf.Clamp(cell.x,0,scene.width),"y",Mathf.Clamp(cell.y,0,scene.height));
             }
             ResetGesture();
             Refresh();
         }
 
+        private void Send(string type,params object[] args)=>dispatch(type,args);
+        private void GetPair(out Vector2 first,out Vector2 second)
+        {
+            var it=pointers.Values.GetEnumerator();it.MoveNext();first=it.Current;it.MoveNext();second=it.Current;
+        }
+
         private void ResetGesture()
         {
-            foreach (var id in pointers.Keys) if (this.HasPointerCapture(id)) this.ReleasePointer(id);
+            RestoreDragPreview();
+            var ids=pointers.Keys.ToArray();pointers.Clear();
+            foreach (var id in ids) if (this.HasPointerCapture(id)) this.ReleasePointer(id);
             pointers.Clear();
-            pinching=false; dragId=null; measuring=false; moved=false;
+            pinching=false; panOnly=false;dragId=null; measuring=false; moved=false;
+            overlay.MarkDirtyRepaint();
+        }
+        private void RestoreDragPreview()
+        {
+            if(dragId==null || scene==null)return;
+            var t=Array.Find(scene.tokens,v=>v.id==dragId);if(t==null)return;
+            var point=pendingMoves.TryGetValue(t.id,out var pending)?pending.point:new Vector2(t.x,t.y);
+            UpdatePiecePosition(t,point);
         }
 
         private void Fog(Vector2 cell)
         {
             if (!state.IsGm || cell.x<0 || cell.y<0 || cell.x>=scene.width || cell.y>=scene.height) return;
             lastFog=Time.unscaledTime;
-            client.Act("fog.paint","x",Mathf.FloorToInt(cell.x),"y",Mathf.FloorToInt(cell.y),"radius",1,"reveal",Tool=="reveal");
+            Send("fog.paint","x",Mathf.FloorToInt(cell.x),"y",Mathf.FloorToInt(cell.y),"radius",1,"reveal",Tool=="reveal");
         }
 
         private void SyncPieces()
@@ -285,14 +347,15 @@ namespace FoxTable
             var alive=new HashSet<string>(scene.tokens.Select(t=>t.id));
             foreach(var id in views.Keys.Where(id=>!alive.Contains(id)).ToArray())
             { views[id].root.RemoveFromHierarchy();views[id].label.RemoveFromHierarchy();views.Remove(id); }
-            foreach(var t in scene.tokens.OrderBy(t=>t.layer=="map"?0:t.layer=="gm"?2:1))
+            hitOrder=scene.tokens.OrderBy(t=>t.layer=="map"?0:t.layer=="gm"?2:1).ToArray();
+            foreach(var t in hitOrder)
             {
                 if(!views.TryGetValue(t.id,out var view))
                 {
-                    view=new PieceView {root=new VisualElement{pickingMode=PickingMode.Ignore},
+                    view=new PieceView {root=new VisualElement{pickingMode=PickingMode.Ignore,usageHints=UsageHints.DynamicTransform},
                         art=new Image{pickingMode=PickingMode.Ignore,scaleMode=ScaleMode.ScaleToFit},
                         letter=new Label{pickingMode=PickingMode.Ignore},hp=new VisualElement{pickingMode=PickingMode.Ignore},
-                        label=new Label{pickingMode=PickingMode.Ignore}};
+                        label=new Label{pickingMode=PickingMode.Ignore,usageHints=UsageHints.DynamicTransform}};
                     view.root.AddToClassList("piece");view.art.AddToClassList("miniature-art");
                     view.hp.AddToClassList("hp-bar");view.label.AddToClassList("piece-name");
                     view.root.Add(view.art);view.root.Add(view.letter);view.root.Add(view.hp);
@@ -311,27 +374,62 @@ namespace FoxTable
                 view.hp.style.display=t.kind=="object"?DisplayStyle.None:DisplayStyle.Flex;
                 view.hp.style.width=Length.Percent(t.maxHp>0?100f*t.hp/t.maxHp:0);
                 view.label.text=t.name+(t.conditions.Length>0?" •":"")+(t.locked?" · закреплён":"");
+                view.root.style.left=0;view.root.style.top=0;
+                view.root.style.width=t.size*CellSize-2;view.root.style.height=t.size*CellSize-2;
+                view.letter.style.fontSize=Mathf.Clamp(CellSize*t.size*.43f,10,36);
+                view.label.style.left=0;view.label.style.top=0;view.label.style.width=t.size*CellSize+40;
+                Vector2 point=t.id==dragId && moved?dragPosition:pendingMoves.TryGetValue(t.id,out var pending)?pending.point:new Vector2(t.x,t.y);
+                UpdatePiecePosition(t,point);
             }
+        }
+        private void UpdateMapGeometry()
+        {
+            if(scene==null)return;
+            var bounds=MapLayout.ImageCells(scene,mapTexture==null?0:mapTexture.width,mapTexture==null?0:mapTexture.height);
+            map.style.left=bounds.x*CellSize;map.style.top=bounds.y*CellSize;
+            map.style.width=bounds.width*CellSize;map.style.height=bounds.height*CellSize;
+        }
+        private void UpdatePiecePosition(TokenState t,Vector2 point)
+        {
+            if(!views.TryGetValue(t.id,out var view))return;
+            view.root.transform.position=new Vector3(point.x*CellSize+1,point.y*CellSize+1,0);
+            view.label.transform.position=new Vector3(point.x*CellSize-20,(point.y+t.size)*CellSize,0);
+        }
+        private void UpdateSelection()
+        {
+            if(scene==null)return;
+            foreach(var t in scene.tokens)if(views.TryGetValue(t.id,out var view))
+                view.root.EnableInClassList("selected-piece",t.id==selectedId || t.id==scene.turnId);
         }
         private void Refresh()
         {
-            if (scene==null) return;
-            var bounds=MapLayout.ImageCells(scene,mapTexture==null?0:mapTexture.width,mapTexture==null?0:mapTexture.height);
-            map.style.left=offset.x+bounds.x*Unit;map.style.top=offset.y+bounds.y*Unit;
-            map.style.width=bounds.width*Unit;map.style.height=bounds.height*Unit;
-            foreach(var t in scene.tokens)
-            {
-                if(!views.TryGetValue(t.id,out var view))continue;
-                Vector2 pos=t.id==dragId && moved?dragPosition:new Vector2(t.x,t.y);
-                view.root.style.left=offset.x+pos.x*Unit+1;view.root.style.top=offset.y+pos.y*Unit+1;
-                view.root.style.width=Mathf.Max(2,t.size*Unit-2);view.root.style.height=Mathf.Max(2,t.size*Unit-2);
-                view.letter.style.fontSize=Mathf.Clamp(Unit*t.size*0.43f,10,36);
-                view.root.EnableInClassList("selected-piece",t.id==selectedId || t.id==scene.turnId);
-                view.label.style.display=Unit>22?DisplayStyle.Flex:DisplayStyle.None;
-                view.label.style.left=offset.x+pos.x*Unit-20;view.label.style.top=offset.y+(pos.y+t.size)*Unit;
-                view.label.style.width=t.size*Unit+40;
+            if(scene==null)return;
+            // One GPU transform. No per-token layout changes or grid/fog tessellation while panning.
+            world.transform.position=new Vector3(offset.x,offset.y,0);
+            world.transform.scale=new Vector3(zoom,zoom,1);
+            bool show=Unit>22;
+            if(show!=labelsVisible){labelsVisible=show;foreach(var view in views.Values)view.label.style.display=show?DisplayStyle.Flex:DisplayStyle.None;}
+            if(measuring || scene.barriers.Length>0 || state.effect!=null || state.ping!=null)overlay.MarkDirtyRepaint();
+        }
+        private void UpdateFog()
+        {
+            bool use=scene.fog || scene.lighting && !state.IsGm;
+            fogImage.style.display=use?DisplayStyle.Flex:DisplayStyle.None;
+            if(!use)return;
+            if(fogTexture==null || fogTexture.width!=scene.width || fogTexture.height!=scene.height){
+                if(fogTexture!=null)UnityEngine.Object.Destroy(fogTexture);
+                fogTexture=new Texture2D(scene.width,scene.height,TextureFormat.RGBA32,false){filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
+                fogPixels=new Color32[scene.width*scene.height];fogImage.image=fogTexture;
             }
-            markings.MarkDirtyRepaint();
+            for(int y=0;y<scene.height;y++)for(int x=0;x<scene.width;x++){
+                int key=y*100+x;float alpha=scene.fog && !revealed.Contains(key)?(state.IsGm?.62f:1):0;
+                if(scene.lighting && !state.IsGm && !currentCells.Contains(key)){
+                    float light=scene.explorer && exploredCells.Contains(key)?.78f:1;alpha=1-(1-alpha)*(1-light);
+                }
+                fogPixels[(scene.height-1-y)*scene.width+x]=new Color32(6,9,11,(byte)Mathf.RoundToInt(alpha*255));
+            }
+            fogTexture.SetPixels32(fogPixels);fogTexture.Apply(false);
+            UpdateSelection();
         }
 
         private static void Rect(Painter2D p, float x, float y, float w, float h, Color color)
@@ -382,38 +480,19 @@ namespace FoxTable
                 Color grid=Color.white;
                 if(!string.IsNullOrEmpty(scene.gridColor))ColorUtility.TryParseHtmlString(scene.gridColor,out grid);
                 grid.a=scene.gridOpacity>0?scene.gridOpacity:0.4f;
-                for(int x=0;x<=scene.width;x++) Line(p,ToLocal(x,0),ToLocal(x,scene.height),grid);
-                for(int y=0;y<=scene.height;y++) Line(p,ToLocal(0,y),ToLocal(scene.width,y),grid);
+                for(int x=0;x<=scene.width;x++) Line(p,World(x,0),World(x,scene.height),grid);
+                for(int y=0;y<=scene.height;y++) Line(p,World(0,y),World(scene.width,y),grid);
             }
             foreach(var t in scene.tokens)
-                if(t.auraFeet>0)Shape(p,"circle",ToLocal(t.x+t.size/2f,t.y+t.size/2f),
-                    ToLocal(t.x+t.size/2f+(float)t.auraFeet/scene.cellFeet,t.y+t.size/2f));
-            foreach(var d in scene.drawings) Shape(p,d.shape,ToLocal(d.x,d.y),ToLocal(d.ex,d.ey));
-            if(measuring) Shape(p,Tool,ToLocal(anchor.x,anchor.y),ToLocal(dragPosition.x,dragPosition.y));
-            if(scene.fog)
-            {
-                Color fog=new Color(0.025f,0.035f,0.045f,state.IsGm ? 0.62f:1);
-                for(int y=0;y<scene.height;y++)
-                for(int x=0;x<scene.width;x++)
-                    if(!revealed.Contains(y*100+x))
-                    {
-                        Vector2 pos=ToLocal(x,y);
-                        if(pos.x+Unit<0 || pos.y+Unit<0 || pos.x>contentRect.width || pos.y>contentRect.height)continue;
-                        Rect(p,pos.x,pos.y,Unit+0.5f,Unit+0.5f,fog);
-                    }
-            }
-            if(scene.lighting && !state.IsGm)
-            {
-                for(int y=0;y<scene.height;y++)
-                for(int x=0;x<scene.width;x++)
-                {
-                    if(currentCells.Contains(y*100+x))continue;
-                    Vector2 pos=ToLocal(x,y);
-                    if(pos.x+Unit<0 || pos.y+Unit<0 || pos.x>contentRect.width || pos.y>contentRect.height)continue;
-                    bool explored=scene.explorer && exploredCells.Contains(y*100+x);
-                    Rect(p,pos.x,pos.y,Unit+0.5f,Unit+0.5f,new Color(0.025f,0.035f,0.045f,explored?0.78f:1));
-                }
-            }
+                if(t.auraFeet>0)Shape(p,"circle",World(t.x+t.size/2f,t.y+t.size/2f),
+                    World(t.x+t.size/2f+(float)t.auraFeet/scene.cellFeet,t.y+t.size/2f));
+            foreach(var d in scene.drawings) Shape(p,d.shape,World(d.x,d.y),World(d.ex,d.ey));
+        }
+        private void PaintOverlay(MeshGenerationContext context)
+        {
+            if(scene==null)return;
+            var p=context.painter2D;
+            if(measuring)Shape(p,Tool,ToLocal(anchor.x,anchor.y),ToLocal(dragPosition.x,dragPosition.y));
             foreach(var wall in scene.barriers)
             {
                 Color color=wall.kind=="wall"?new Color(0.8f,0.65f,0.4f):wall.kind=="window"?new Color(0.35f,0.75f,0.9f):wall.open?new Color(0.4f,0.8f,0.55f):new Color(0.95f,0.55f,0.25f);

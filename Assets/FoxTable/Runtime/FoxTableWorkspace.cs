@@ -21,18 +21,40 @@ namespace FoxTable
         private byte[] pendingImage;
         private string pendingMime,gridSceneId;
         private SceneState gridDraft;
+        private Label selectedSize;
+        private void ReleaseImport()
+        {
+            if(pendingTexture!=null)Destroy(pendingTexture);
+            pendingTexture=null;pendingImage=null;pendingMime=null;
+        }
 
         private void BuildSelectionBar()
         {
-            selectionBar=Row(screen);selectionBar.AddToClassList("selection-bar");
-            selectionArt=new Image{scaleMode=ScaleMode.ScaleToFit};selectionArt.AddToClassList("selection-art");selectionBar.Add(selectionArt);
-            selectionText=Label(selectionBar,"","selection-summary");selectionText.style.flexGrow=1;
-            Button(selectionBar,"−5",()=>QuickHp(-5));Button(selectionBar,"+5",()=>QuickHp(5));
-            Button(selectionBar,"Действия",()=>OpenPanel("actions"));
+            selectionBar=new VisualElement();screen.Add(selectionBar);selectionBar.AddToClassList("selection-bar");
+            var summary=Row(selectionBar);
+            selectionArt=new Image{scaleMode=ScaleMode.ScaleToFit};selectionArt.AddToClassList("selection-art");summary.Add(selectionArt);
+            selectionText=Label(summary,"","selection-summary");selectionText.style.flexGrow=1;
+            Button(summary,"Действия",()=>OpenPanel("actions"));
+            selectedSize=null;
+            if(client.State.IsGm){
+                var edit=Row(selectionBar);
+                Button(edit,"Меньше",()=>ResizeSelected(-1));selectedSize=Label(edit,"","muted");
+                Button(edit,"Больше",()=>ResizeSelected(1));
+                Button(edit,"↻ 45°",()=>{var t=Array.Find(client.State.Active.tokens,v=>v.id==selectedId);if(t!=null)client.Act("token.update","tokenId",t.id,"rotation",(t.rotation+45)%360);});
+                Button(edit,"Карточка",()=>OpenPanel("token"));
+            }
             selectionBar.style.display=DisplayStyle.None;
             placementBar=Row(screen);placementBar.AddToClassList("placement-bar");
             placementText=Label(placementBar,"");placementText.style.flexGrow=1;
             Button(placementBar,"Готово",()=>{stamp=null;SetTool("select");});placementBar.style.display=DisplayStyle.None;
+        }
+        private void ResizeSelected(int delta)
+        {
+            var t=Array.Find(client.State.Active.tokens,v=>v.id==selectedId);
+            if(t==null || !client.State.IsGm || client.IsPreview)return;
+            int size=Mathf.Clamp(t.size+delta,1,4);
+            if(size!=t.size)client.Act("token.update","tokenId",t.id,"size",size);
+            else ShowToast("Размер фигуры: от 1 до 4 клеток");
         }
         private void QuickHp(int delta)
         {
@@ -49,6 +71,7 @@ namespace FoxTable
             {
                 selectionText.text=t.name+"\n"+(t.kind=="object"?"Объект карты":$"{t.hp}/{t.maxHp} HP · КД {t.ac}");
                 selectionArt.image=TokenCatalog.Texture(TokenCatalog.Art(t));
+                if(selectedSize!=null)selectedSize.text=t.size+" × "+t.size;
                 bool edit=!client.IsPreview && (client.State.IsGm || t.ownerId==client.State.selfId);
                 foreach(var button in selectionBar.Children().OfType<Button>())if(button.text!="Действия")button.SetEnabled(edit && t.kind!="object");
                 if(actionStats!=null)actionStats.text=t.kind=="object"?"Объект карты":$"{t.hp}/{t.maxHp} HP · временные {t.tempHp} · КД {t.ac}";
@@ -126,6 +149,7 @@ namespace FoxTable
             void Use(string tool){ClosePanel();SetTool(tool);}
             Label(content,"КАРТА И ИЗМЕРЕНИЯ","eyebrow");
             var row=Row(content);Button(row,"Двигать карту",()=>Use("pan"));Button(row,"Метка",()=>Use("ping"));Button(row,"Двери",()=>Use("doorUse"));
+            Button(content,"Линейка расстояний",()=>Use("measure"));
             if(!client.State.IsGm)return;
             Label(content,"ТУМАН ВОЙНЫ","eyebrow");
             Check(content,"Туман включён",client.State.Active.fog,v=>client.Act("scene.update","fog",v));
@@ -153,7 +177,7 @@ namespace FoxTable
             if(!state.IsGm)return;
             Button(content,"Загрузить картинку карты",PickMap,"primary");
             Button(content,"Настроить сетку и масштаб",()=>OpenPanel("grid"));
-            Label(content,"PNG / JPEG до 6 МБ. После выбора появится предпросмотр картинки и сетки.","muted");
+            Label(content,"PNG / JPEG до 32 МБ. Большие картинки автоматически уменьшаются до 2048 пикселей для памяти телефона.","muted");
             Label(content,"СЦЕНЫ КАМПАНИИ","eyebrow");
             foreach(var scene in state.scenes)
             {
@@ -170,10 +194,8 @@ namespace FoxTable
         {
             if(client.State==null || !client.State.IsGm || client.IsPreview)return;
             if(!MapImage.Fits(bytes)){ShowToast("Нужен PNG / JPEG до 6 МБ, 16 мегапикселей и 8192 пикселей по стороне");return;}
-            var texture=new Texture2D(2,2);
-            if(!texture.LoadImage(bytes) || texture.width>8192 || texture.height>8192 || (long)texture.width*texture.height>16*1024*1024)
-            {Destroy(texture);ShowToast("Нужен PNG / JPEG до 16 мегапикселей и 8192 пикселей по стороне");return;}
-            if(pendingTexture!=null)Destroy(pendingTexture);
+            ReleaseImport();
+            var texture=MapImage.Decode(bytes);
             pendingTexture=texture;pendingImage=bytes;pendingMime=bytes[0]==137?"image/png":"image/jpeg";
             gridSceneId=client.State.sceneId;
             gridDraft=JsonUtility.FromJson<SceneState>(JsonUtility.ToJson(client.State.Active));
@@ -192,11 +214,17 @@ namespace FoxTable
             if(gridDraft==null || (importing && pendingImage==null)){Label(content,"Выбери картинку заново");return;}
             Label(content,importing?"1. Проверь картинку и сетку":"Сетка поверх карты","headline-small");
             var preview=new MapPreview();content.Add(preview);preview.Set(texture,gridDraft);
+            if(texture!=null){
+                Label(content,"Тяни картинку одним пальцем. Два пальца меняют её размер относительно сетки.","muted");
+                var zoom=Row(content);Button(zoom,"Картинка −",()=>preview.ScaleImage(.8f));
+                Button(zoom,"Вписать",preview.FitImage);Button(zoom,"Картинка +",()=>preview.ScaleImage(1.25f));
+            }
             var advanced=new Foldout{text="Точная подгонка и параметры",value=!importing};
             var width=Number(advanced,"Ширина сцены, кл.",gridDraft.width);var height=Number(advanced,"Высота сцены, кл.",gridDraft.height);
-            var ppc=new FloatField("Пикселей в клетке"){value=gridDraft.mapPixelsPerCell};advanced.Add(ppc);
-            var ox=new FloatField("Сдвиг X, клеток"){value=gridDraft.mapOffsetX};advanced.Add(ox);
-            var oy=new FloatField("Сдвиг Y, клеток"){value=gridDraft.mapOffsetY};advanced.Add(oy);
+            var ppc=new FloatField("Пикселей в клетке"){value=gridDraft.mapPixelsPerCell,isDelayed=true};advanced.Add(ppc);
+            var ox=new FloatField("Сдвиг X, клеток"){value=gridDraft.mapOffsetX,isDelayed=true};advanced.Add(ox);
+            var oy=new FloatField("Сдвиг Y, клеток"){value=gridDraft.mapOffsetY,isDelayed=true};advanced.Add(oy);
+            preview.Changed=()=>{ppc.SetValueWithoutNotify(gridDraft.mapPixelsPerCell);ox.SetValueWithoutNotify(gridDraft.mapOffsetX);oy.SetValueWithoutNotify(gridDraft.mapOffsetY);};
             var feet=Number(advanced,"Футов в клетке",gridDraft.cellFeet);
             void Refresh(){preview.Set(texture,gridDraft);}
             width.RegisterValueChangedCallback(e=>{gridDraft.width=Mathf.Clamp(e.newValue,5,80);Refresh();});

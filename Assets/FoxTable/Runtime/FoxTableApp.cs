@@ -23,6 +23,9 @@ namespace FoxTable
         private Rect safeArea;
         private string chatDraft = "";
         private bool tableGm;
+        private bool pickingMap;
+        private float nextPickerPoll;
+        private string importCache;
         private static readonly string[] Conditions = {"Ослеплён", "Очарован", "Глухота", "Испуган", "Схвачен",
             "Недееспособен", "Невидим", "Парализован", "Окаменел", "Отравлен", "Сбит с ног", "Опутан",
             "Оглушён", "Без сознания", "Концентрация", "Мёртв"};
@@ -65,6 +68,7 @@ namespace FoxTable
 
         private void Update()
         {
+            PollMapPicker();
             if (Screen.safeArea == safeArea) return;
             safeArea = Screen.safeArea;
             // Percentage insets track UI Toolkit panel scaling and device rotation.
@@ -93,7 +97,7 @@ namespace FoxTable
         }
         private static IntegerField Number(VisualElement parent, string label, int value)
         {
-            var field = new IntegerField(label) {value = value}; parent.Add(field); return field;
+            var field = new IntegerField(label) {value = value,isDelayed=true}; parent.Add(field); return field;
         }
         private static VisualElement Row(VisualElement parent)
         {
@@ -141,7 +145,7 @@ namespace FoxTable
             var recovery = Field(card, "Личный ключ");
             recovery.isPasswordField = true;
             Button(card, "Восстановить доступ", () => client.Restore(server.value, code.value, recovery.value));
-            Label(scroll, "v0.4 · Unity / Android\nЛокально — один телефон. Онлайн — общая комната на сервере FoxTable.", "muted");
+            Label(scroll, "v0.4.1 · Unity / Android\nЛокально — один телефон. Онлайн — общая комната на сервере FoxTable.", "muted");
         }
 
         private void Table()
@@ -164,7 +168,7 @@ namespace FoxTable
             toolText=Label(screen,ToolHelp("select"),"tool-hint");
             BuildSelectionBar();
             var tools=Row(screen);tools.AddToClassList("tools-main");
-            ModeButton(tools,"Двигать","select");ModeButton(tools,"Линейка","measure");
+            ModeButton(tools,"Фигуры","select");ModeButton(tools,"Карта","pan");
             Button(tools,"Инструменты",()=>OpenPanel("tools"));
             if(client.IsLocal)undoButton=Button(tools,"Отменить",client.UndoLocal);else undoButton=null;
             var bottom=Row(screen);bottom.AddToClassList("bottom-nav");
@@ -202,7 +206,7 @@ namespace FoxTable
             }
         }
 
-        private void ClosePanel() { panel="";actionStats=null;journalItems=null;modal.style.display=DisplayStyle.None; }
+        private void ClosePanel() { panel="";actionStats=null;journalItems=null;modal.style.display=DisplayStyle.None;modal.Clear();ReleaseImport(); }
         private void OpenPanel(string kind)
         {
             if(client.State==null)return;
@@ -419,6 +423,7 @@ namespace FoxTable
 
         private void PickMap()
         {
+            if(pickingMap)return;
 #if UNITY_EDITOR
             string path=UnityEditor.EditorUtility.OpenFilePanel("Карта боя","","png,jpg,jpeg");
             if(!string.IsNullOrEmpty(path))
@@ -429,26 +434,58 @@ namespace FoxTable
             {
                 using(var unity=new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
                 using(var activity=unity.GetStatic<AndroidJavaObject>("currentActivity"))
-                using(var picker=new AndroidJavaClass("com.foxtable.FoxGallery"))
+                using(var picker=new AndroidJavaClass("com.foxtable.FoxGallery")) {
+                    importCache=picker.CallStatic<string>("cacheDirectory",activity);
+                    pickingMap=true;
                     picker.CallStatic("open",activity);
+                }
             }
-            catch(Exception){ShowToast("Не удалось открыть выбор изображения");}
+            catch(Exception){pickingMap=false;ShowToast("Не удалось открыть выбор изображения");}
 #else
             ShowToast("Выбор файла доступен в Android и Unity Editor");
 #endif
         }
 
-        [Serializable] private sealed class GalleryImage {public string data,mime,error;}
-        // Invoked by the Android document picker, on Unity's main thread.
+        private void PollMapPicker()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if(!pickingMap || Time.unscaledTime<nextPickerPoll)return;
+            nextPickerPoll=Time.unscaledTime+0.2f;
+            try {
+                using(var picker=new AndroidJavaClass("com.foxtable.FoxGallery")) {
+                    string json=picker.CallStatic<string>("takeResult");
+                    if(!string.IsNullOrEmpty(json)){pickingMap=false;OnAndroidImage(json);}
+                }
+            } catch(Exception){pickingMap=false;ShowToast("Ошибка возврата из выбора картинки");}
+#endif
+        }
+        [Serializable] private sealed class GalleryImage {public string fileName,error;public bool cancelled,resized;}
+        // Polling consumes a tiny result only after Unity resumes. Pixels stay in the private cache.
         public void OnAndroidImage(string json)
         {
+            string path=null;
             try
             {
                 var image=JsonUtility.FromJson<GalleryImage>(json);
+                if(image==null || image.cancelled)return;
                 if(!string.IsNullOrEmpty(image.error)){ShowToast(image.error);return;}
-                PrepareMap(Convert.FromBase64String(image.data),image.mime);
+                if(string.IsNullOrEmpty(importCache) || Path.GetFileName(image.fileName)!=image.fileName ||
+                    !Guid.TryParseExact(Path.GetFileNameWithoutExtension(image.fileName),"N",out _))throw new ArgumentException();
+                path=Path.Combine(importCache,image.fileName);
+                if(new FileInfo(path).Length>MapImage.MaxBytes)throw new ArgumentException();
+                var bytes=File.ReadAllBytes(path);
+                ReleaseImport();
+                StartCoroutine(PrepareMapSoon(bytes,image.resized));
             }
             catch(Exception){ShowToast("Не удалось прочитать изображение");}
+            finally {if(path!=null)try{File.Delete(path);}catch(IOException){ShowToast("Не удалось очистить временный файл карты");}}
+        }
+
+        private System.Collections.IEnumerator PrepareMapSoon(byte[] bytes,bool resized)
+        {
+            yield return null;
+            try {PrepareMap(bytes,"");if(resized)ShowToast("Большая картинка уменьшена для памяти телефона");}
+            catch(ArgumentException e){ShowToast(e.Message);}
         }
 
         private void ShowToast(string message)

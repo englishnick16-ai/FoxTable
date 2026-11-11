@@ -490,6 +490,8 @@ def apply_action(state, actor, b):
             t['hp'] = min(t['hp'], t['maxHp'])
             if 'size' in b:
                 size = int(number(b['size'], 1, 4))
+                if size != t['size']:
+                    t['x'], t['y'] = min(t['x'], s['width']-size), min(t['y'], s['height']-size)
                 require(t['x']+size <= s['width'] and t['y']+size <= s['height'], 'Жетон за границей карты')
                 t['size'] = size
             if 'ownerId' in b:

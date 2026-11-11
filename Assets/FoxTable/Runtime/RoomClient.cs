@@ -273,16 +273,13 @@ namespace FoxTable
             string sceneId=fields.TryGetValue("sceneId",out var idValue)?(string)idValue:State.sceneId;
             fields["sceneId"]=sceneId;
             if (IsLocal) {
-                var check = new Texture2D(2, 2);
                 try {
-                    if (!check.LoadImage(bytes) || check.width > 8192 || check.height > 8192 || (long)check.width*check.height>16*1024*1024) {
-                        Notice?.Invoke("Нужна карта PNG / JPEG размером до 8192 × 8192"); return;
-                    }
+                    // The import preview already decoded this image. Do not allocate another full texture.
                     string id = LocalStore.WriteMap(bytes);
                     fields["mapId"]=id;Act("scene.update",Json.Pairs(fields));
                 } catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) {
                     Notice?.Invoke("Не удалось сохранить карту на телефоне");
-                } finally { Destroy(check); }
+                }
                 return;
             }
             StartCoroutine(Upload(bytes, mime,fields));
@@ -306,18 +303,19 @@ namespace FoxTable
         {
             if (Session == null) yield break;
             if (IsLocal) {
+                // Let the import preview release its texture before allocating the board texture.
+                yield return null;
                 Texture2D texture = null;
                 try {
                     byte[] bytes = LocalStore.ReadMap(assetId);
-                    texture = new Texture2D(2, 2);
-                    if (!texture.LoadImage(bytes)) { Destroy(texture); texture = null; }
+                    texture = MapImage.Decode(bytes);
                 } catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ArgumentException) {
                     if (texture != null) Destroy(texture); texture = null;
                     Notice?.Invoke("Не удалось прочитать сохранённую карту");
                 }
                 done(texture); yield break;
             }
-            using (var request = UnityWebRequestTexture.GetTexture(Session.server + RoomPath + "/assets/" + assetId))
+            using (var request = UnityWebRequestTexture.GetTexture(Session.server + RoomPath + "/assets/" + assetId,true))
             {
                 request.SetRequestHeader("Authorization", "Bearer " + Session.secret);
                 request.timeout = 25;

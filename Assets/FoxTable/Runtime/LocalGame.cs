@@ -190,7 +190,9 @@ namespace FoxTable
             t.rotation=(int)Num(b,"rotation",0,359,t.rotation);
             t.maxHp = (int)Num(b, "maxHp", 1, 9999, t.maxHp); t.hp = Math.Min(t.maxHp, (int)Num(b, "hp", 0, 9999, t.hp));
             t.ac = (int)Num(b, "ac", 0, 99, t.ac); t.initiative = (int)Num(b, "initiative", -100, 100, t.initiative);
+            int oldSize=t.size;
             t.size = (int)Num(b, "size", 1, 4, t.size);
+            if(t.size!=oldSize){t.x=Math.Min(t.x,s.width-t.size);t.y=Math.Min(t.y,s.height-t.size);}
             Need(t.x + t.size <= s.width && t.y + t.size <= s.height, "Жетон за границей карты");
             t.color = Text(b, "color", t.color); Need(Regex.IsMatch(t.color, "^#[0-9a-fA-F]{6}$"), "Нужен цвет #RRGGBB");
             t.ownerId = Text(b, "ownerId", t.ownerId); t.hidden = Flag(b, "hidden", t.hidden); t.locked = Flag(b, "locked", t.locked);

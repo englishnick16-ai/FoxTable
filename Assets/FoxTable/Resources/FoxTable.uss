@@ -100,3 +100,10 @@ Slider { margin-top: 16px; margin-bottom: 16px; min-height: 42px; }
 .brand { margin-bottom: 18px; }
 .headline { font-size: 32px; margin-bottom: 8px; }
 .card { padding: 15px; margin-top: 10px; margin-bottom: 12px; }
+
+/* Touch editing controls must fit the phone width without covering the board. */
+.selection-bar { flex-direction: column; padding: 3px 7px; }
+.selection-bar .row { width: 100%; justify-content: space-between; }
+.selection-bar Button { min-height: 34px; padding: 4px 7px; }
+.selection-art { height: 34px; width: 30px; }
+.selection-summary { max-height: 38px; }

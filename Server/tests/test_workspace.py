@@ -64,3 +64,17 @@ class WorkspaceTests(unittest.TestCase):
     def test_hidden_scenery_does_not_leak_to_player(self):
         self.act(self.host,'token.add',name='Секрет',kind='object',artId='chest',layer='gm',x=3,y=3)
         self.assertFalse(any(t['name']=='Секрет' for t in self.scene(self.player)['tokens']))
+
+    def test_resize_at_edge_keeps_figure_inside(self):
+        hero=self.scene()['tokens'][0]['id']
+        self.act(self.host,'token.move',tokenId=hero,x=self.scene()['width']-1,y=self.scene()['height']-1)
+        self.act(self.host,'token.update',tokenId=hero,size=4)
+        t=self.scene()['tokens'][0]
+        self.assertEqual((t['size'],t['x'],t['y']),(4,self.scene()['width']-4,self.scene()['height']-4))
+        self.act(self.host,'token.update',tokenId=hero,size=1)
+        self.assertEqual(self.scene()['tokens'][0]['x'],t['x'])
+
+    def test_player_cannot_resize_even_owned_figure(self):
+        hero=self.scene()['tokens'][0]['id']
+        self.act(self.host,'token.update',tokenId=hero,ownerId=self.player['memberId'])
+        self.assertDenied(lambda:self.act(self.player,'token.update',tokenId=hero,size=2),403)
