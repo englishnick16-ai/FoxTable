@@ -21,3 +21,9 @@ Unity Project ID: `da845b0f-e87a-471f-9708-c19d9fbae20d`.
 Сборка №1: https://cloud.unity.com/organizations/9072467250824/projects/da845b0f-e87a-471f-9708-c19d9fbae20d/cloud-build/buildtargets/foxtable-android-apk/builds/1
 
 Прохождение серверных тестов и синтаксического анализа не подтверждает сборку Android. Итог определять по журналу Build Automation и наличию APK.
+
+## Исправление после сборки №1
+
+Unity 6000.0.85f2 остановил импорт: `com.unity.modules.textcorefontengine`, `com.unity.modules.textcoretextengine` и `com.unity.modules.textrendering` не существуют как встроенные пакеты. Эти записи удалены. Добавлены встроенные `com.unity.modules.androidjni` и `com.unity.modules.jsonserialize`, используемые Android-плагином и протоколом клиента. UIElements остаётся включённым.
+
+Повторная проверка — сборка APK с исправленным manifest в той же конфигурации; регион Americas оставлен без изменения. Сборка №1 использовала исходный commit `1145d3a8621c6a9f3b893283704a191637f3b2de` и не создала APK.
