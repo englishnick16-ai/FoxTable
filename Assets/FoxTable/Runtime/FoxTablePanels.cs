@@ -40,7 +40,7 @@ namespace FoxTable
                     row=Row(content);
                     Button(row,"Преимущество",()=>Attack("advantage"));
                     Button(row,"Помеха",()=>Attack("disadvantage"));
-                    Label(content,"Дальность и преграды проверяет сервер. Крит удваивает кубики урона. Особые правила решает мастер.","muted");
+                    Label(content,client.IsLocal?"Дальность и преграды проверяет приложение. Крит удваивает кубики урона. Особые правила решает мастер.":"Дальность и преграды проверяет сервер. Крит удваивает кубики урона. Особые правила решает мастер.","muted");
                 }
                 foreach(var macro in t.macros)
                     Button(content,macro.name+" · "+macro.formula,()=>{client.Act("token.macro","tokenId",t.id,"macroId",macro.id);OpenPanel("chat");});
@@ -103,6 +103,7 @@ namespace FoxTable
         {
             var s=client.State;if(!s.IsGm)return;
             var scene=s.Active;
+            if(client.IsLocal) Label(content,"Локально открыт стол мастера: он видит всю карту. Динамический обзор игроков и ограничения движения используются в онлайн-комнатах.","muted");
             Check(content,"Динамическая видимость",scene.lighting,v=>client.Act("scene.update","lighting",v));
             Check(content,"Дневное освещение",scene.daylight,v=>client.Act("scene.update","daylight",v));
             Check(content,"Память исследованных мест",scene.explorer,v=>client.Act("scene.update","explorer",v));
@@ -130,7 +131,7 @@ namespace FoxTable
                 }
                 Button(item,"Удалить отрезок",()=>client.Act("barrier.delete","barrierId",wall.id));
             }
-            Button(content,"Посмотреть глазами игрока",()=>OpenPanel("vision"),"primary");
+            if(!client.IsLocal)Button(content,"Посмотреть глазами игрока",()=>OpenPanel("vision"),"primary");
             Button(content,"Сбросить память исследования",()=>Confirm("Забыть исследованные места для всех игроков?",()=>{client.Act("vision.reset");ClosePanel();}));
             Button(content,"Удалить все преграды",()=>Confirm("Удалить все стены, двери и окна этой сцены?",()=>{client.Act("barrier.clear");ClosePanel();}),"danger");
         }

@@ -107,13 +107,20 @@ namespace FoxTable
 
         private void Lobby()
         {
+            if(mapRequest!=null) {StopCoroutine(mapRequest);mapRequest=null;}
+            if(downloadedMap!=null) {Destroy(downloadedMap);downloadedMap=null;}
             screen.Clear();
             board = null; status = null; lastRevision = -1; loadedMap = null;
             var scroll = new ScrollView(); scroll.AddToClassList("lobby"); screen.Add(scroll);
             Label(scroll, "FOX / TABLE", "brand");
             Label(scroll, "Ваша история.\nВаше поле боя.", "headline");
-            Label(scroll, "КАРТЫ И ОНЛАЙН-БОИ D&D", "eyebrow");
+            Label(scroll, "КАРТЫ И БОИ D&D", "eyebrow");
+            var local = new VisualElement(); local.AddToClassList("card"); scroll.Add(local);
+            Label(local, "СТОЛ НА ТВОЁМ ТЕЛЕФОНЕ", "eyebrow");
+            Button(local, "Играть локально", client.OpenLocal, "primary");
+            Label(local, "Без сервера, интернета и регистрации. Кампания сохраняется автоматически; эта кнопка продолжит сохранённую игру.", "muted");
             var card = new VisualElement(); card.AddToClassList("card"); scroll.Add(card);
+            Label(card, "ОНЛАЙН С ДРУЗЬЯМИ", "eyebrow");
             var server = Field(card, "Сервер", PlayerPrefs.GetString("server", "https://"));
             var name = Field(card, "Твоё имя", PlayerPrefs.GetString("name", "Мастер"));
             var campaign = Field(card, "Кампания", "Забытое святилище");
@@ -132,7 +139,7 @@ namespace FoxTable
             var recovery = Field(card, "Личный ключ");
             recovery.isPasswordField = true;
             Button(card, "Восстановить доступ", () => client.Restore(server.value, code.value, recovery.value));
-            Label(scroll, "v0.2 · Unity / Android\nДля онлайн-игры нужен запущенный сервер FoxTable.", "muted");
+            Label(scroll, "v0.3 · Unity / Android\nЛокально — один телефон. Онлайн — общая комната на сервере FoxTable.", "muted");
         }
 
         private void Table()
@@ -143,8 +150,8 @@ namespace FoxTable
             var branding = new VisualElement(); branding.style.flexGrow = 1; header.Add(branding);
             Label(branding, "FOX / TABLE", "brand-small");
             title = Label(branding, "", "table-title");
-            status = Label(header, "В сети", "online");
-            if(client.Session.role=="gm") Button(header,client.IsPreview?"Вернуться":"Глаз",()=> {
+            status = Label(header, client.IsLocal?"Локально":"В сети", "online");
+            if(client.Session.role=="gm" && !client.IsLocal) Button(header,client.IsPreview?"Вернуться":"Глаз",()=> {
                 if(client.IsPreview){client.Preview(null);ClosePanel();}else OpenPanel("vision");
             });
             Button(header, "☰", () => OpenPanel("room"));
@@ -352,7 +359,7 @@ namespace FoxTable
 
         private void Dice(VisualElement content)
         {
-            Label(content,"Кубики бросает сервер. Результат увидят все участники.","muted");
+            Label(content,client.IsLocal?"Кубики бросаются на телефоне. Результаты сохраняются в журнале.":"Кубики бросает сервер. Результат увидят все участники.","muted");
             var expression=Field(content,"Формула","1d20+5");
             var row=Row(content);
             foreach(int sides in new[]{4,6,8,10,12,20,100})
@@ -406,6 +413,21 @@ namespace FoxTable
         private void Room(VisualElement content)
         {
             var s=client.State;
+            if(client.IsLocal)
+            {
+                Label(content,"ЛОКАЛЬНАЯ КАМПАНИЯ","headline-small");
+                Label(content,"Вы управляете всем столом как мастер. Карты, бой и журнал хранятся на этом телефоне. Для общей игры с разных устройств откройте онлайн-комнату.","muted");
+                var localTitle=Field(content,"Кампания",s.title);
+                Button(content,"Сохранить название",()=>client.Act("room","title",localTitle.value));
+                var localNotes=Field(content,"Заметки мастера",s.gmNotes,true);
+                localNotes.style.minHeight=140;
+                Button(content,"Сохранить заметки",()=>client.Act("notes","text",localNotes.value));
+                Label(content,"Игра сохраняется автоматически. После выхода нажмите «Играть локально», чтобы продолжить. Удаление приложения удалит локальные данные.","muted");
+                Button(content,"Сохранить и выйти в меню",()=> {
+                    if(client.Leave()){ClosePanel();Lobby();}
+                },"primary");
+                return;
+            }
             Label(content,"КОМНАТА "+client.Session.code,"headline-small");
             Button(content,"Скопировать личный ключ восстановления",()=> {
                 GUIUtility.systemCopyBuffer=client.Session.secret;
@@ -426,7 +448,7 @@ namespace FoxTable
             }
             Label(content,"Закрытие приложения сохраняет доступ. Кнопка ниже удаляет доступ с этого устройства.","muted");
             Button(content,"Забыть комнату и выйти",()=>Confirm("Удалить доступ с устройства? Без личного ключа восстановить роль мастера нельзя. Приглашение даёт только роль игрока.",()=> {
-                ClosePanel();client.Leave();Lobby();
+                if(client.Leave()){ClosePanel();Lobby();}
             }),"danger");
         }
 

@@ -60,6 +60,13 @@ namespace FoxTable
         public float movedFeet;
         public TokenMacro[] macros = Array.Empty<TokenMacro>();
         public string[] conditions = Array.Empty<string>();
+        public TokenState Copy()
+        {
+            var copy = (TokenState)MemberwiseClone();
+            copy.conditions = (string[])conditions.Clone();
+            copy.macros = Array.ConvertAll(macros, m => new TokenMacro { id = m.id, name = m.name, formula = m.formula });
+            return copy;
+        }
     }
     [Serializable] public sealed class Drawing { public string id, shape; public float x, y, ex, ey; }
     [Serializable] public sealed class TokenMacro { public string id, name, formula; }

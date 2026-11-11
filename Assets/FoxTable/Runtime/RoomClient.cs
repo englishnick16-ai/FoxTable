@@ -15,6 +15,62 @@ namespace FoxTable
         public event Action<string> ConnectionChanged;
         public Session Session { get; private set; }
         public RoomState State { get; private set; }
+        public bool IsLocal { get; private set; }
+        private LocalCampaignStore localStore;
+        private readonly LocalGame localGame = new LocalGame();
+        private bool localDirty;
+        private Coroutine localSave;
+        private LocalCampaignStore LocalStore => localStore ?? (localStore = new LocalCampaignStore(Path.Combine(Application.persistentDataPath, "local")));
+
+        public void OpenLocal()
+        {
+            RoomState saved;
+            bool recovered;
+            try { saved = LocalStore.Load(out recovered) ?? LocalGame.Create(); }
+            catch (Exception e) { Notice?.Invoke(e.Message); return; }
+            StopAllCoroutines(); poll = sender = localSave = null; operations.Clear();
+            IsLocal = true; PreviewMemberId = null;
+            Session = new Session { code = "LOCAL", memberId = saved.selfId, role = "gm" };
+            State = saved;
+            localDirty = true; SaveLocal();
+            Changed?.Invoke(State);
+            ConnectionChanged?.Invoke("Локально · без сервера");
+            if (recovered) Notice?.Invoke("Кампания восстановлена из резервной копии");
+        }
+
+        private void SaveLocal()
+        {
+            if (!IsLocal || !localDirty || State == null) return;
+            try { LocalStore.Write(State); localDirty = false; }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) {
+                Notice?.Invoke("Не удалось сохранить локальную игру. Освободите место на телефоне.");
+            }
+        }
+
+        private IEnumerator SaveLocalSoon()
+        {
+            yield return new WaitForSecondsRealtime(0.4f);
+            SaveLocal(); localSave = null;
+        }
+        private void OnApplicationPause(bool paused) { if (paused) { DrainLocalQueue(); SaveLocal(); } }
+        private void OnApplicationQuit() { DrainLocalQueue(); SaveLocal(); }
+        private void DrainLocalQueue()
+        {
+            if (!IsLocal) return;
+            while (operations.Count > 0) ApplyLocal(operations.Dequeue());
+        }
+        private void ApplyLocal(Dictionary<string, object> operation)
+        {
+            RoomState next;
+            try {
+                next = localGame.ApplyCopy(State, operation);
+            } catch (Exception e) when (e is ArgumentException || e is InvalidCastException || e is OverflowException) {
+                Notice?.Invoke(e.Message); return;
+            }
+            State = next; localDirty = true;
+            if (localSave == null) localSave = StartCoroutine(SaveLocalSoon());
+            Changed?.Invoke(State);
+        }
         public string PreviewMemberId { get; private set; }
         public bool IsPreview => !string.IsNullOrEmpty(PreviewMemberId);
         private readonly Queue<Dictionary<string, object>> operations = new Queue<Dictionary<string, object>>();
@@ -44,6 +100,7 @@ namespace FoxTable
             if (!Uri.TryCreate(server.Trim(), UriKind.Absolute, out Uri uri) ||
                 (uri.Scheme != "https" && uri.Scheme != "http"))
             { Notice?.Invoke("Укажите адрес сервера: https://example.com"); yield break; }
+            if (IsLocal) { Notice?.Invoke("Сначала выйдите из локальной игры"); yield break; }
             string origin = server.Trim().TrimEnd('/');
             ConnectionChanged?.Invoke("Подключение…");
             using (var request = Build(origin + path, "POST", Json.Encode(body), null))
@@ -69,8 +126,14 @@ namespace FoxTable
             catch (Exception) { Notice?.Invoke("Не удалось прочитать сохранённую сессию"); }
         }
 
-        public void Leave()
+        public bool Leave()
         {
+            DrainLocalQueue();
+            SaveLocal();
+            if (IsLocal && localDirty) return false;
+            bool wasLocal = IsLocal;
+            StopAllCoroutines();
+            localSave = null; IsLocal = false;
             if (poll != null) StopCoroutine(poll);
             if (sender != null) StopCoroutine(sender);
             poll = sender = null;
@@ -78,8 +141,9 @@ namespace FoxTable
             State = null;
             PreviewMemberId = null;
             Session = null;
-            try { if (File.Exists(SessionPath)) File.Delete(SessionPath); }
+            try { if (!wasLocal && File.Exists(SessionPath)) File.Delete(SessionPath); }
             catch (IOException) { Notice?.Invoke("Не удалось удалить сохранённую сессию"); }
+            return true;
         }
 
         private void SaveSession()
@@ -129,6 +193,7 @@ namespace FoxTable
 
         public void Preview(string memberId)
         {
+            if (IsLocal) { Notice?.Invoke("В локальной игре вы управляете столом как мастер"); return; }
             if (Session == null || Session.role != "gm") return;
             if (operations.Count > 0 || sender != null) { Notice?.Invoke("Дождитесь отправки текущих действий"); return; }
             PreviewMemberId = memberId;
@@ -141,6 +206,12 @@ namespace FoxTable
             yield return null;
             while (Session != null && operations.Count > 0)
             {
+                if (IsLocal)
+                {
+                    ApplyLocal(operations.Dequeue());
+                    yield return null;
+                    continue;
+                }
                 using (var request = Build(Session.server + RoomPath + "/actions", "POST",
                     Json.Encode(operations.Peek()), Session.secret))
                 {
@@ -182,6 +253,19 @@ namespace FoxTable
         {
             if (State == null || !State.IsGm) return;
             if (bytes.Length > 6 * 1024 * 1024) { Notice?.Invoke("Карта должна быть меньше 6 МБ"); return; }
+            if (IsLocal) {
+                var check = new Texture2D(2, 2);
+                try {
+                    if (!check.LoadImage(bytes) || check.width > 8192 || check.height > 8192) {
+                        Notice?.Invoke("Нужна карта PNG / JPEG размером до 8192 × 8192"); return;
+                    }
+                    string id = LocalStore.WriteMap(bytes);
+                    Act("scene.update", "mapId", id);
+                } catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) {
+                    Notice?.Invoke("Не удалось сохранить карту на телефоне");
+                } finally { Destroy(check); }
+                return;
+            }
             string sceneId = State.sceneId;
             StartCoroutine(Upload(bytes, mime, sceneId));
         }
@@ -203,6 +287,18 @@ namespace FoxTable
         public IEnumerator DownloadMap(string assetId, Action<Texture2D> done)
         {
             if (Session == null) yield break;
+            if (IsLocal) {
+                Texture2D texture = null;
+                try {
+                    byte[] bytes = LocalStore.ReadMap(assetId);
+                    texture = new Texture2D(2, 2);
+                    if (!texture.LoadImage(bytes)) { Destroy(texture); texture = null; }
+                } catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ArgumentException) {
+                    if (texture != null) Destroy(texture); texture = null;
+                    Notice?.Invoke("Не удалось прочитать сохранённую карту");
+                }
+                done(texture); yield break;
+            }
             using (var request = UnityWebRequestTexture.GetTexture(Session.server + RoomPath + "/assets/" + assetId))
             {
                 request.SetRequestHeader("Authorization", "Bearer " + Session.secret);
@@ -241,6 +337,8 @@ namespace FoxTable
 
         private void OnDestroy()
         {
+            DrainLocalQueue();
+            SaveLocal();
             StopAllCoroutines();
             operations.Clear();
         }
