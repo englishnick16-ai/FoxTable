@@ -129,6 +129,7 @@ namespace FoxTable
 
         public void SetMap(Texture2D texture) { mapTexture=texture;map.image = texture;UpdateMapGeometry();Refresh(); }
         public void Select(string id) { selectedId = id; UpdateSelection(); }
+        public void CancelInteraction(){ResetGesture();Refresh();}
 
         public void Fit()
         {

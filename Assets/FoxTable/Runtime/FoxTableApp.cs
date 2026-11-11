@@ -77,6 +77,8 @@ namespace FoxTable
             root.style.paddingLeft = Length.Percent(safeArea.xMin/Screen.width*100);
             root.style.paddingRight = Length.Percent((Screen.width-safeArea.xMax)/Screen.width*100);
         }
+        private void OnApplicationPause(bool paused){if(paused)board?.CancelInteraction();}
+        private void OnApplicationFocus(bool focused){if(!focused)board?.CancelInteraction();}
 
         private static Label Label(VisualElement parent, string text, string cls = null)
         {

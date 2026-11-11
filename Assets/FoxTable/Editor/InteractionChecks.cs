@@ -77,6 +77,15 @@ namespace FoxTable.Editor
             timer.Stop();Pointer<PointerUpEvent>(board,"Up",1,Vector2.zero);
             Check(pieces.Select((p,i)=>p.style.width==widths[i] && p.transform.position==positions[i]).All(v=>v),"500 pan samples preserve per-piece layout and transforms");
             Check(commands.Count==count,"camera gestures do not enqueue state copies or saves");
+            board.SetState(game.ApplyCopy(state,Json.Fields("type","token.move","tokenId",t.id,"x",5,"y",5)));
+            board.Tool="select";origin=Point(board,5.5f,5.5f);
+            var piece=world.Query<VisualElement>(className:"piece").ToList()[0];var oldPosition=piece.transform.position;
+            Pointer<PointerDownEvent>(board,"Down",1,origin);Pointer<PointerMoveEvent>(board,"Move",1,origin+new Vector2(50,20));
+            board.CancelInteraction();
+            Check(piece.transform.position==oldPosition && commands.Count==count,"pause/cancel restores dragged figure without committing a move");
+            board.Tool="pan";before=world.transform.position;
+            Pointer<PointerDownEvent>(board,"Down",1,new Vector2(50,50));Pointer<PointerMoveEvent>(board,"Move",1,new Vector2(70,60));Pointer<PointerUpEvent>(board,"Up",1,Vector2.zero);
+            Check(Vector2.Distance((Vector2)(world.transform.position-before),new Vector2(20,10))<.01f,"new gesture works after cancellation");
             Debug.Log("FoxTable synthetic 500 pan events: "+timer.ElapsedMilliseconds+" ms in Editor (not Android FPS)");
             DisposeBoard(board);
             // A dense fog is a single small texture, not thousands of tessellated paths per pointer event.
