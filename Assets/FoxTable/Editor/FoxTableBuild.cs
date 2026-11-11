@@ -4,7 +4,6 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace FoxTable.Editor
 {
@@ -20,11 +19,17 @@ namespace FoxTable.Editor
             if (!File.Exists(ScenePath))
             {
                 // Generate through Unity rather than hand-writing scene YAML/file IDs.
-                var original = SceneManager.GetActiveScene();
-                var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
-                EditorSceneManager.SaveScene(scene, ScenePath);
-                EditorSceneManager.CloseScene(scene, true);
-                if (original.IsValid()) SceneManager.SetActiveScene(original);
+                if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                    throw new BuildFailedException("Scene preparation cancelled; existing scenes were not changed.");
+                var originalSetup = EditorSceneManager.GetSceneManagerSetup();
+                bool restoreSetup = !Application.isBatchMode && originalSetup.Length > 0;
+                foreach (var entry in originalSetup)
+                    restoreSetup &= !string.IsNullOrEmpty(entry.path);
+                // Cloud Build starts with an unsaved Untitled scene, which prevents additive creation.
+                var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                if (!EditorSceneManager.SaveScene(scene, ScenePath))
+                    throw new BuildFailedException("Could not save the FoxTable startup scene.");
+                if (restoreSetup) EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
             }
             EditorBuildSettings.scenes = new[] {new EditorBuildSettingsScene(ScenePath, true)};
             PlayerSettings.companyName = "FoxTable";

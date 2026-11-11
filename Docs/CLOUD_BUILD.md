@@ -27,3 +27,7 @@ Unity Project ID: `da845b0f-e87a-471f-9708-c19d9fbae20d`.
 Unity 6000.0.85f2 остановил импорт: `com.unity.modules.textcorefontengine`, `com.unity.modules.textcoretextengine` и `com.unity.modules.textrendering` не существуют как встроенные пакеты. Эти записи удалены. Добавлены встроенные `com.unity.modules.androidjni` и `com.unity.modules.jsonserialize`, используемые Android-плагином и протоколом клиента. UIElements остаётся включённым.
 
 Повторная проверка — сборка APK с исправленным manifest в той же конфигурации; регион Americas оставлен без изменения. Сборка №1 использовала исходный commit `1145d3a8621c6a9f3b893283704a191637f3b2de` и не создала APK.
+
+## Исправление после сборки №2
+
+Сборка №2 (`e4df99e80ae86b9ed459f034730571f2254e9794`) разрешила зависимости и дошла до вызова `Prepare`. Экспорт остановился с `Cannot create a new scene additively with an untitled scene unsaved`. Подготовка теперь создаёт стартовую сцену в режиме `Single`, не зависящем от несохранённой начальной сцены облачного Editor. При интерактивном запуске сначала предлагается сохранить изменённые сцены; сохранённая конфигурация открытых сцен восстанавливается после создания Table. В batch mode остаётся открытой созданная Table. Результат проверяется следующей Android-сборкой; APK сборкой №2 не создан.
