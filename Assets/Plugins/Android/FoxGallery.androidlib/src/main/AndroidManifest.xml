@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.foxtable.gallery">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <application>
     <activity android:name="com.foxtable.FoxGallery" android:exported="false"
               android:theme="@android:style/Theme.Translucent.NoTitleBar" />
