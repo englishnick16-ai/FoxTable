@@ -130,6 +130,12 @@ namespace FoxTable
         public void SetMap(Texture2D texture) { mapTexture=texture;map.image = texture;UpdateMapGeometry();Refresh(); }
         public void Select(string id) { selectedId = id; UpdateSelection(); }
         public void CancelInteraction(){ResetGesture();Refresh();}
+        public void RejectPendingMoves()
+        {
+            var ids=pendingMoves.Keys.ToArray();pendingMoves.Clear();
+            if(scene==null)return;
+            foreach(var id in ids){var t=Array.Find(scene.tokens,v=>v.id==id);if(t!=null)UpdatePiecePosition(t,new Vector2(t.x,t.y));}
+        }
 
         public void Fit()
         {

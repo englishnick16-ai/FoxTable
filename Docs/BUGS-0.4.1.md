@@ -25,3 +25,12 @@ User report after APK 0.4.0 / build 10: general lag, crash when importing an ima
 ## Device acceptance (Not run)
 
 Install the update over 0.4.0, preserving data. Exercise PNG/JPEG at 500 px, 2048 px, >4096 px, transparent PNG, oversized source, cancel, corrupt file, consecutive import/cancel/import and rotation while picking. Confirm memory does not accumulate. Test camera pan over tokens, empty-space pan, pinch, release one finger and continue, drag near screen edges, resize at all scene edges, locked tokens, map preview pan/resize and grid save/reopen. Check save/quit/resume/airplane mode. For online play update the server and test two clients, ownership and rejected moves. Record Android frame times before/after under the same populated scene and gestures. No claim of complete stability until these target checks pass.
+
+
+## Продолжение 12 ноября: вход в Unity требуется заново
+
+Исправлено восстановление положения после отклонённой команды: RoomClient сообщает ActionRejected, приложение откатывает только визуальное ожидание движения; серверный снимок не меняется. Добавлена регрессионная проверка. После этого 60 серверных тестов Passed, 16 C#/Java файлов разобраны Tree-sitter без синтаксических ошибок. Новая проверка Unity ещё не выполнена.
+
+№12 остановилась на CS1061 в MapPreview: не хватало using UnityEngine.UIElements для extension methods. Исправление сохранено в commit 32dbcaeab4317f419caf32684c41a18b4eaf5cc9 и отправлено в №13. Результат №13 пока неизвестен: при продолжении Unity Dashboard перенаправляет на login.unity.com/en/sign-in. Браузерная сессия больше не авторизована; секреты не извлекать и не обходить вход. Последняя подтверждённая APK остаётся 0.4.0, новая APK не получена.
+
+После входа: открыть Build history, проверить №13 и полный журнал. Затем собрать текущий main с ActionRejected и 30 InteractionChecks, исправить реальные ошибки проверок без их отключения, скачать APK, проверить versionName 0.4.1/код версии/сертификат/DEX/ресурсы и сохранить файл. Android runtime и исчезновение пользовательского вылета остаются Not run. Сохранения не удалять, тариф/регион/доступы не менять.

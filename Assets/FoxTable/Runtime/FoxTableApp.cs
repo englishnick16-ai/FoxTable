@@ -61,6 +61,7 @@ namespace FoxTable
             toast = new Label(); toast.AddToClassList("toast"); toast.style.display = DisplayStyle.None; root.Add(toast);
             client.Changed += StateChanged;
             client.Notice += ShowToast;
+            client.ActionRejected+=CommandRejected;
             client.ConnectionChanged += message => { if (status != null) status.text = message; };
             Lobby();
 
@@ -79,6 +80,7 @@ namespace FoxTable
         }
         private void OnApplicationPause(bool paused){if(paused)board?.CancelInteraction();}
         private void OnApplicationFocus(bool focused){if(!focused)board?.CancelInteraction();}
+        private void CommandRejected(){board?.RejectPendingMoves();}
 
         private static Label Label(VisualElement parent, string text, string cls = null)
         {
@@ -498,7 +500,7 @@ namespace FoxTable
 
         private void OnDestroy()
         {
-            if(client!=null){client.Changed-=StateChanged;client.Notice-=ShowToast;}
+            if(client!=null){client.Changed-=StateChanged;client.Notice-=ShowToast;client.ActionRejected-=CommandRejected;}
             if(downloadedMap!=null)Destroy(downloadedMap);
             if(settings!=null)Destroy(settings);
             if(pendingTexture!=null)Destroy(pendingTexture);

@@ -13,6 +13,7 @@ namespace FoxTable
         public event Action<RoomState> Changed;
         public event Action<string> Notice;
         public event Action<string> ConnectionChanged;
+        public event Action ActionRejected;
         public Session Session { get; private set; }
         public RoomState State { get; private set; }
         public bool IsLocal { get; private set; }
@@ -70,7 +71,7 @@ namespace FoxTable
             try {
                 next = localGame.ApplyCopy(State, operation);
             } catch (Exception e) when (e is ArgumentException || e is InvalidCastException || e is OverflowException) {
-                Notice?.Invoke(e.Message); return;
+                Notice?.Invoke(e.Message);ActionRejected?.Invoke();return;
             }
             State = next; localDirty = true;
             undo.Add(previous);if(undo.Count>20)undo.RemoveAt(0);
@@ -196,9 +197,9 @@ namespace FoxTable
 
         public void Act(string type, params object[] pairs)
         {
-            if (IsPreview) { Notice?.Invoke("Выйдите из просмотра глазами игрока, чтобы менять игру"); return; }
+            if (IsPreview) { Notice?.Invoke("Выйдите из просмотра глазами игрока, чтобы менять игру");ActionRejected?.Invoke();return; }
             if (Session == null || State == null) return;
-            if (operations.Count >= 100) { Notice?.Invoke("Дождитесь соединения с сервером"); return; }
+            if (operations.Count >= 100) { Notice?.Invoke("Дождитесь соединения с сервером");ActionRejected?.Invoke();return; }
             var body = Json.Fields(pairs);
             body["type"] = type;
             body["requestId"] = Guid.NewGuid().ToString("N");
@@ -240,6 +241,7 @@ namespace FoxTable
                     }
                     operations.Dequeue();
                     if (Success(request)) Accept(request.downloadHandler.text);
+                    else ActionRejected?.Invoke();
                 }
             }
             sender = null;

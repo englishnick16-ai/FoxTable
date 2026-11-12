@@ -76,6 +76,9 @@ namespace FoxTable.Editor
             Check(commands.Count==1 && commands[0].Key=="token.move","drag sends exactly one move command");
             var move=Json.Fields(commands[0].Value);Check(Mathf.Abs(Convert.ToSingle(move["x"])-(t.x+2))<.01f && Mathf.Abs(Convert.ToSingle(move["y"])-(t.y+1))<.01f,"drag uses start position and retains snapped endpoint");
             Check(new Vector2(t.x,t.y)==originalPosition,"local drag preview does not mutate authoritative snapshot");
+            var dragged=world.Query<VisualElement>(className:"piece").ToList()[0];
+            board.RejectPendingMoves();
+            Check(Vector2.Distance((Vector2)dragged.transform.position,new Vector2(t.x*48+1,t.y*48+1))<.01f,"rejected move immediately rolls back its visual preview");
             int count=commands.Count;
             board.Tool="pan";Pointer<PointerDownEvent>(board,"Down",1,origin);
             var pieces=world.Query<VisualElement>(className:"piece").ToList();var widths=pieces.Select(p=>p.style.width).ToArray();var positions=pieces.Select(p=>p.transform.position).ToArray();
