@@ -1,0 +1,884 @@
+[
+  {
+    "id": "kk-home-a-r",
+    "name": "Дом с башенкой · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_home_A_red.obj"
+  },
+  {
+    "id": "kk-home-b-r",
+    "name": "Жилой дом · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_home_B_red.obj"
+  },
+  {
+    "id": "kk-castle-r",
+    "name": "Замок · красная",
+    "category": "Постройки",
+    "size": 4,
+    "source": "buildings/red/building_castle_red.obj"
+  },
+  {
+    "id": "kk-church-r",
+    "name": "Храм · красная",
+    "category": "Постройки",
+    "size": 3,
+    "source": "buildings/red/building_church_red.obj"
+  },
+  {
+    "id": "kk-tavern-r",
+    "name": "Таверна · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_tavern_red.obj"
+  },
+  {
+    "id": "kk-market-r",
+    "name": "Рынок · красная",
+    "category": "Постройки",
+    "size": 3,
+    "source": "buildings/red/building_market_red.obj"
+  },
+  {
+    "id": "kk-blacksmith-r",
+    "name": "Кузница · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_blacksmith_red.obj"
+  },
+  {
+    "id": "kk-barracks-r",
+    "name": "Казармы · красная",
+    "category": "Постройки",
+    "size": 3,
+    "source": "buildings/red/building_barracks_red.obj"
+  },
+  {
+    "id": "kk-archeryrange-r",
+    "name": "Стрельбище · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_archeryrange_red.obj"
+  },
+  {
+    "id": "kk-mine-r",
+    "name": "Шахта · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_mine_red.obj"
+  },
+  {
+    "id": "kk-well-r",
+    "name": "Колодец · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_well_red.obj"
+  },
+  {
+    "id": "kk-windmill-r",
+    "name": "Ветряная мельница · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_windmill_red.obj"
+  },
+  {
+    "id": "kk-watermill-r",
+    "name": "Водяная мельница · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_watermill_red.obj"
+  },
+  {
+    "id": "kk-lumbermill-r",
+    "name": "Лесопилка · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_lumbermill_red.obj"
+  },
+  {
+    "id": "kk-tower-a-r",
+    "name": "Сторожевая башня · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_tower_A_red.obj"
+  },
+  {
+    "id": "kk-tower-b-r",
+    "name": "Дозорная башня · красная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/red/building_tower_B_red.obj"
+  },
+  {
+    "id": "kk-home-a-b",
+    "name": "Дом с башенкой · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_home_A_blue.obj"
+  },
+  {
+    "id": "kk-home-b-b",
+    "name": "Жилой дом · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_home_B_blue.obj"
+  },
+  {
+    "id": "kk-castle-b",
+    "name": "Замок · синяя",
+    "category": "Постройки",
+    "size": 4,
+    "source": "buildings/blue/building_castle_blue.obj"
+  },
+  {
+    "id": "kk-church-b",
+    "name": "Храм · синяя",
+    "category": "Постройки",
+    "size": 3,
+    "source": "buildings/blue/building_church_blue.obj"
+  },
+  {
+    "id": "kk-tavern-b",
+    "name": "Таверна · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_tavern_blue.obj"
+  },
+  {
+    "id": "kk-market-b",
+    "name": "Рынок · синяя",
+    "category": "Постройки",
+    "size": 3,
+    "source": "buildings/blue/building_market_blue.obj"
+  },
+  {
+    "id": "kk-blacksmith-b",
+    "name": "Кузница · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_blacksmith_blue.obj"
+  },
+  {
+    "id": "kk-barracks-b",
+    "name": "Казармы · синяя",
+    "category": "Постройки",
+    "size": 3,
+    "source": "buildings/blue/building_barracks_blue.obj"
+  },
+  {
+    "id": "kk-archeryrange-b",
+    "name": "Стрельбище · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_archeryrange_blue.obj"
+  },
+  {
+    "id": "kk-mine-b",
+    "name": "Шахта · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_mine_blue.obj"
+  },
+  {
+    "id": "kk-well-b",
+    "name": "Колодец · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_well_blue.obj"
+  },
+  {
+    "id": "kk-windmill-b",
+    "name": "Ветряная мельница · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_windmill_blue.obj"
+  },
+  {
+    "id": "kk-watermill-b",
+    "name": "Водяная мельница · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_watermill_blue.obj"
+  },
+  {
+    "id": "kk-lumbermill-b",
+    "name": "Лесопилка · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_lumbermill_blue.obj"
+  },
+  {
+    "id": "kk-tower-a-b",
+    "name": "Сторожевая башня · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_tower_A_blue.obj"
+  },
+  {
+    "id": "kk-tower-b-b",
+    "name": "Дозорная башня · синяя",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/blue/building_tower_B_blue.obj"
+  },
+  {
+    "id": "kk-home-a-g",
+    "name": "Дом с башенкой · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_home_A_green.obj"
+  },
+  {
+    "id": "kk-home-b-g",
+    "name": "Жилой дом · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_home_B_green.obj"
+  },
+  {
+    "id": "kk-castle-g",
+    "name": "Замок · зелёная",
+    "category": "Постройки",
+    "size": 4,
+    "source": "buildings/green/building_castle_green.obj"
+  },
+  {
+    "id": "kk-church-g",
+    "name": "Храм · зелёная",
+    "category": "Постройки",
+    "size": 3,
+    "source": "buildings/green/building_church_green.obj"
+  },
+  {
+    "id": "kk-tavern-g",
+    "name": "Таверна · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_tavern_green.obj"
+  },
+  {
+    "id": "kk-market-g",
+    "name": "Рынок · зелёная",
+    "category": "Постройки",
+    "size": 3,
+    "source": "buildings/green/building_market_green.obj"
+  },
+  {
+    "id": "kk-blacksmith-g",
+    "name": "Кузница · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_blacksmith_green.obj"
+  },
+  {
+    "id": "kk-barracks-g",
+    "name": "Казармы · зелёная",
+    "category": "Постройки",
+    "size": 3,
+    "source": "buildings/green/building_barracks_green.obj"
+  },
+  {
+    "id": "kk-archeryrange-g",
+    "name": "Стрельбище · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_archeryrange_green.obj"
+  },
+  {
+    "id": "kk-mine-g",
+    "name": "Шахта · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_mine_green.obj"
+  },
+  {
+    "id": "kk-well-g",
+    "name": "Колодец · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_well_green.obj"
+  },
+  {
+    "id": "kk-windmill-g",
+    "name": "Ветряная мельница · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_windmill_green.obj"
+  },
+  {
+    "id": "kk-watermill-g",
+    "name": "Водяная мельница · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_watermill_green.obj"
+  },
+  {
+    "id": "kk-lumbermill-g",
+    "name": "Лесопилка · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_lumbermill_green.obj"
+  },
+  {
+    "id": "kk-tower-a-g",
+    "name": "Сторожевая башня · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_tower_A_green.obj"
+  },
+  {
+    "id": "kk-tower-b-g",
+    "name": "Дозорная башня · зелёная",
+    "category": "Постройки",
+    "size": 2,
+    "source": "buildings/green/building_tower_B_green.obj"
+  },
+  {
+    "id": "kk-tree-single-a",
+    "name": "Лиственное дерево",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/tree_single_A.obj"
+  },
+  {
+    "id": "kk-tree-single-b",
+    "name": "Ель",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/tree_single_B.obj"
+  },
+  {
+    "id": "kk-trees-a-small",
+    "name": "Роща",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/trees_A_small.obj"
+  },
+  {
+    "id": "kk-trees-a-medium",
+    "name": "Лес",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/trees_A_medium.obj"
+  },
+  {
+    "id": "kk-trees-a-large",
+    "name": "Густой лес",
+    "category": "Ландшафт",
+    "size": 3,
+    "source": "decoration/nature/trees_A_large.obj"
+  },
+  {
+    "id": "kk-trees-b-small",
+    "name": "Сосновая роща",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/trees_B_small.obj"
+  },
+  {
+    "id": "kk-trees-b-medium",
+    "name": "Хвойный лес",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/trees_B_medium.obj"
+  },
+  {
+    "id": "kk-trees-b-large",
+    "name": "Густой хвойный лес",
+    "category": "Ландшафт",
+    "size": 3,
+    "source": "decoration/nature/trees_B_large.obj"
+  },
+  {
+    "id": "kk-hill-single-a",
+    "name": "Холм",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/hill_single_A.obj"
+  },
+  {
+    "id": "kk-hill-single-b",
+    "name": "Высокий холм",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/hill_single_B.obj"
+  },
+  {
+    "id": "kk-hill-single-c",
+    "name": "Каменистый холм",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/hill_single_C.obj"
+  },
+  {
+    "id": "kk-hills-a",
+    "name": "Холмы",
+    "category": "Ландшафт",
+    "size": 3,
+    "source": "decoration/nature/hills_A.obj"
+  },
+  {
+    "id": "kk-hills-a-trees",
+    "name": "Лесистые холмы",
+    "category": "Ландшафт",
+    "size": 3,
+    "source": "decoration/nature/hills_A_trees.obj"
+  },
+  {
+    "id": "kk-hills-b-trees",
+    "name": "Зелёные холмы",
+    "category": "Ландшафт",
+    "size": 3,
+    "source": "decoration/nature/hills_B_trees.obj"
+  },
+  {
+    "id": "kk-hills-c-trees",
+    "name": "Хвойные холмы",
+    "category": "Ландшафт",
+    "size": 3,
+    "source": "decoration/nature/hills_C_trees.obj"
+  },
+  {
+    "id": "kk-mountain-a",
+    "name": "Горная вершина",
+    "category": "Ландшафт",
+    "size": 4,
+    "source": "decoration/nature/mountain_A.obj"
+  },
+  {
+    "id": "kk-mountain-a-grass",
+    "name": "Зелёная гора",
+    "category": "Ландшафт",
+    "size": 4,
+    "source": "decoration/nature/mountain_A_grass.obj"
+  },
+  {
+    "id": "kk-mountain-a-grass-trees",
+    "name": "Гора с лесом",
+    "category": "Ландшафт",
+    "size": 4,
+    "source": "decoration/nature/mountain_A_grass_trees.obj"
+  },
+  {
+    "id": "kk-mountain-b",
+    "name": "Скальная гора",
+    "category": "Ландшафт",
+    "size": 4,
+    "source": "decoration/nature/mountain_B.obj"
+  },
+  {
+    "id": "kk-mountain-b-grass-trees",
+    "name": "Лесное нагорье",
+    "category": "Ландшафт",
+    "size": 4,
+    "source": "decoration/nature/mountain_B_grass_trees.obj"
+  },
+  {
+    "id": "kk-mountain-c",
+    "name": "Острая вершина",
+    "category": "Ландшафт",
+    "size": 4,
+    "source": "decoration/nature/mountain_C.obj"
+  },
+  {
+    "id": "kk-mountain-c-grass-trees",
+    "name": "Горный хребет",
+    "category": "Ландшафт",
+    "size": 4,
+    "source": "decoration/nature/mountain_C_grass_trees.obj"
+  },
+  {
+    "id": "kk-rock-single-a",
+    "name": "Валун",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/rock_single_A.obj"
+  },
+  {
+    "id": "kk-rock-single-b",
+    "name": "Скалы",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/rock_single_B.obj"
+  },
+  {
+    "id": "kk-rock-single-c",
+    "name": "Каменная гряда",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/rock_single_C.obj"
+  },
+  {
+    "id": "kk-waterlily-a",
+    "name": "Кувшинки",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/waterlily_A.obj"
+  },
+  {
+    "id": "kk-waterlily-b",
+    "name": "Лотосы",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/waterlily_B.obj"
+  },
+  {
+    "id": "kk-waterplant-a",
+    "name": "Камыш",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/waterplant_A.obj"
+  },
+  {
+    "id": "kk-waterplant-b",
+    "name": "Речные травы",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/waterplant_B.obj"
+  },
+  {
+    "id": "kk-cloud-big",
+    "name": "Большое облако",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/cloud_big.obj"
+  },
+  {
+    "id": "kk-cloud-small",
+    "name": "Облако",
+    "category": "Ландшафт",
+    "size": 2,
+    "source": "decoration/nature/cloud_small.obj"
+  },
+  {
+    "id": "kk-hex-river-a",
+    "name": "Река A",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_A.obj"
+  },
+  {
+    "id": "kk-hex-river-a-curvy",
+    "name": "Река curvy",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_A_curvy.obj"
+  },
+  {
+    "id": "kk-hex-river-b",
+    "name": "Река B",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_B.obj"
+  },
+  {
+    "id": "kk-hex-river-c",
+    "name": "Река C",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_C.obj"
+  },
+  {
+    "id": "kk-hex-river-d",
+    "name": "Река D",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_D.obj"
+  },
+  {
+    "id": "kk-hex-river-e",
+    "name": "Река E",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_E.obj"
+  },
+  {
+    "id": "kk-hex-river-f",
+    "name": "Река F",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_F.obj"
+  },
+  {
+    "id": "kk-hex-river-g",
+    "name": "Река G",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_G.obj"
+  },
+  {
+    "id": "kk-hex-river-h",
+    "name": "Река H",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_H.obj"
+  },
+  {
+    "id": "kk-hex-river-i",
+    "name": "Река I",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_I.obj"
+  },
+  {
+    "id": "kk-hex-river-j",
+    "name": "Река J",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_J.obj"
+  },
+  {
+    "id": "kk-hex-river-k",
+    "name": "Река K",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_K.obj"
+  },
+  {
+    "id": "kk-hex-river-l",
+    "name": "Река L",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_L.obj"
+  },
+  {
+    "id": "kk-hex-river-crossing-a",
+    "name": "Река A",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_crossing_A.obj"
+  },
+  {
+    "id": "kk-hex-river-crossing-b",
+    "name": "Река B",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/rivers/hex_river_crossing_B.obj"
+  },
+  {
+    "id": "kk-hex-coast-a",
+    "name": "Побережье A",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/coast/hex_coast_A.obj"
+  },
+  {
+    "id": "kk-hex-coast-b",
+    "name": "Побережье B",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/coast/hex_coast_B.obj"
+  },
+  {
+    "id": "kk-hex-coast-c",
+    "name": "Побережье C",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/coast/hex_coast_C.obj"
+  },
+  {
+    "id": "kk-hex-coast-d",
+    "name": "Побережье D",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/coast/hex_coast_D.obj"
+  },
+  {
+    "id": "kk-hex-coast-e",
+    "name": "Побережье E",
+    "category": "Реки и берега",
+    "size": 3,
+    "source": "tiles/coast/hex_coast_E.obj"
+  },
+  {
+    "id": "kk-hex-road-a",
+    "name": "Дорога A",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_A.obj"
+  },
+  {
+    "id": "kk-hex-road-a-sloped-high",
+    "name": "Дорога high",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_A_sloped_high.obj"
+  },
+  {
+    "id": "kk-hex-road-a-sloped-low",
+    "name": "Дорога low",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_A_sloped_low.obj"
+  },
+  {
+    "id": "kk-hex-road-b",
+    "name": "Дорога B",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_B.obj"
+  },
+  {
+    "id": "kk-hex-road-c",
+    "name": "Дорога C",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_C.obj"
+  },
+  {
+    "id": "kk-hex-road-d",
+    "name": "Дорога D",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_D.obj"
+  },
+  {
+    "id": "kk-hex-road-e",
+    "name": "Дорога E",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_E.obj"
+  },
+  {
+    "id": "kk-hex-road-f",
+    "name": "Дорога F",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_F.obj"
+  },
+  {
+    "id": "kk-hex-road-g",
+    "name": "Дорога G",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_G.obj"
+  },
+  {
+    "id": "kk-hex-road-h",
+    "name": "Дорога H",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_H.obj"
+  },
+  {
+    "id": "kk-hex-road-i",
+    "name": "Дорога I",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_I.obj"
+  },
+  {
+    "id": "kk-hex-road-j",
+    "name": "Дорога J",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_J.obj"
+  },
+  {
+    "id": "kk-hex-road-k",
+    "name": "Дорога K",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_K.obj"
+  },
+  {
+    "id": "kk-hex-road-l",
+    "name": "Дорога L",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_L.obj"
+  },
+  {
+    "id": "kk-hex-road-m",
+    "name": "Дорога M",
+    "category": "Дороги",
+    "size": 3,
+    "source": "tiles/roads/hex_road_M.obj"
+  },
+  {
+    "id": "kk-tent",
+    "name": "Походная палатка",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/tent.obj"
+  },
+  {
+    "id": "kk-barrel",
+    "name": "Деревянная бочка",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/barrel.obj"
+  },
+  {
+    "id": "kk-wheelbarrow",
+    "name": "Тачка",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/wheelbarrow.obj"
+  },
+  {
+    "id": "kk-weaponrack",
+    "name": "Стойка с оружием",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/weaponrack.obj"
+  },
+  {
+    "id": "kk-resource-stone",
+    "name": "Запасы камня",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/resource_stone.obj"
+  },
+  {
+    "id": "kk-resource-lumber",
+    "name": "Дрова",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/resource_lumber.obj"
+  },
+  {
+    "id": "kk-ladder",
+    "name": "Деревянная лестница",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/ladder.obj"
+  },
+  {
+    "id": "kk-crate-open",
+    "name": "Открытый ящик",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/crate_open.obj"
+  },
+  {
+    "id": "kk-sack",
+    "name": "Мешки",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/sack.obj"
+  },
+  {
+    "id": "kk-flag-red",
+    "name": "Красный флаг",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/flag_red.obj"
+  },
+  {
+    "id": "kk-flag-blue",
+    "name": "Синий флаг",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/flag_blue.obj"
+  },
+  {
+    "id": "kk-target",
+    "name": "Мишень",
+    "category": "Обстановка",
+    "size": 2,
+    "source": "decoration/props/target.obj"
+  }
+]

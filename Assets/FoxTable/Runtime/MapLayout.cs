@@ -17,7 +17,7 @@ namespace FoxTable
                 scene.mapOffsetY+(automatic?(scene.height-height)/2:0),width,height);
         }
         public static int RowsForImage(int width,int height,int columns)
-        { return Mathf.Clamp(Mathf.CeilToInt((float)height*columns/width),5,80); }
+        { return Mathf.Clamp(Mathf.CeilToInt((float)height*columns/width),5,MapBuilder.MaxCells); }
         public static Vector2 Place(SceneState s,Vector2 point,int size)
         {
             float x=Mathf.Clamp(point.x-size/2f,0,s.width-size),y=Mathf.Clamp(point.y-size/2f,0,s.height-size);
@@ -62,7 +62,7 @@ namespace FoxTable
                     var delta=(fingers[e.pointerId]-start)/Unit;
                     scene.mapOffsetX=shift.x+delta.x;scene.mapOffsetY=shift.y+delta.y;
                 }
-                scene.mapOffsetX=Mathf.Clamp(scene.mapOffsetX,-80,80);scene.mapOffsetY=Mathf.Clamp(scene.mapOffsetY,-80,80);
+                scene.mapOffsetX=Mathf.Clamp(scene.mapOffsetX,-MapBuilder.MaxCells,MapBuilder.MaxCells);scene.mapOffsetY=Mathf.Clamp(scene.mapOffsetY,-MapBuilder.MaxCells,MapBuilder.MaxCells);
                 Refresh();Changed?.Invoke();e.StopPropagation();
             });
             RegisterCallback<UnityEngine.UIElements.PointerUpEvent>(e=>{
@@ -90,7 +90,7 @@ namespace FoxTable
             Manual();var old=MapLayout.ImageCells(scene,texture.width,texture.height);
             scene.mapPixelsPerCell=Mathf.Clamp(scene.mapPixelsPerCell/factor,.5f,8192);
             var next=MapLayout.ImageCells(scene,texture.width,texture.height);
-            scene.mapOffsetX=Mathf.Clamp(old.center.x-next.width/2,-80,80);scene.mapOffsetY=Mathf.Clamp(old.center.y-next.height/2,-80,80);
+            scene.mapOffsetX=Mathf.Clamp(old.center.x-next.width/2,-MapBuilder.MaxCells,MapBuilder.MaxCells);scene.mapOffsetY=Mathf.Clamp(old.center.y-next.height/2,-MapBuilder.MaxCells,MapBuilder.MaxCells);
             Refresh();Changed?.Invoke();
         }
         public void FitImage(){if(scene==null)return;scene.mapPixelsPerCell=0;scene.mapOffsetX=scene.mapOffsetY=0;Refresh();Changed?.Invoke();}

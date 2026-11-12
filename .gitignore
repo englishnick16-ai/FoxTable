@@ -9,3 +9,8 @@ Builds/
 *.sqlite3*
 __pycache__/
 .DS_Store
+
+# Rebuilt by WorldAssetPreparation from licensed source archives
+Assets/FoxTable/Resources/World/
+Assets/FoxTable/WorldModels/
+Art/KayKit/Models/

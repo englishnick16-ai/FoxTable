@@ -40,6 +40,7 @@ namespace FoxTable
     {
         public string id, name, mapId, turnId;
         public string background, gridColor;
+        public TerrainStroke[] terrain=Array.Empty<TerrainStroke>();
         public float mapPixelsPerCell, mapOffsetX, mapOffsetY, gridOpacity;
         public int width, height, cellFeet, round;
         public bool grid, snap, fog, activeCombat;

@@ -47,7 +47,7 @@ namespace FoxTable
             settings = ScriptableObject.CreateInstance<PanelSettings>();
             settings.themeStyleSheet = Resources.Load<ThemeStyleSheet>("FoxTheme");
             settings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
-            settings.referenceResolution = new Vector2Int(480, 900);
+            settings.referenceResolution = new Vector2Int(400, 860);
             settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
             settings.match = 0.5f;
             document = gameObject.AddComponent<UIDocument>();
@@ -72,6 +72,7 @@ namespace FoxTable
             PollMapPicker();
             if (Screen.safeArea == safeArea) return;
             safeArea = Screen.safeArea;
+            root.EnableInClassList("landscape",Screen.width>Screen.height);
             // Percentage insets track UI Toolkit panel scaling and device rotation.
             root.style.paddingTop = Length.Percent((Screen.height-safeArea.yMax)/Screen.height*100);
             root.style.paddingBottom = Length.Percent(safeArea.yMin/Screen.height*100);
@@ -149,7 +150,7 @@ namespace FoxTable
             var recovery = Field(card, "Личный ключ");
             recovery.isPasswordField = true;
             Button(card, "Восстановить доступ", () => client.Restore(server.value, code.value, recovery.value));
-            Label(scroll, "v0.4.1 · Unity / Android\nЛокально — один телефон. Онлайн — общая комната на сервере FoxTable.", "muted");
+            Label(scroll, "v0.5.0 · Unity / Android\nЛокально — один телефон. Онлайн — общая комната на сервере FoxTable.", "muted");
         }
 
         private void Table()
@@ -157,36 +158,36 @@ namespace FoxTable
             screen.Clear();modeButtons.Clear();stamp=null;
             tableGm=client.State.IsGm;loadedMap=null;lastRevision=-1;
             var header=Row(screen);header.AddToClassList("header");
-            var branding=new VisualElement();branding.style.flexGrow=1;header.Add(branding);
-            Label(branding,"FOX TABLE","brand-small");title=Label(branding,"","table-title");
+            var branding=new VisualElement();branding.style.flexGrow=1;branding.style.minWidth=0;header.Add(branding);
+            Label(branding,"FOX / TABLE","brand-small");title=Label(branding,"","table-title");
             status=Label(header,client.IsLocal?"На телефоне":"В сети","online");
             Button(header,"Меню",()=>OpenPanel("room"));
             var bar=Row(screen);bar.AddToClassList("scene-bar");
             info=Label(bar,"","muted");info.style.flexGrow=1;
             Button(bar,"−",()=>board.Zoom(0.8f));Button(bar,"Вписать",()=>board.Fit());Button(bar,"+",()=>board.Zoom(1.25f));
             board=new BattleBoard(client);
-            board.Selected+=id=>{selectedId=id;RefreshSelection();};
+            board.Selected+=id=>{selectedId=id;RefreshSelection();if(id!=null)board.EnsureSelectionVisible(Screen.width>Screen.height?70:112);};
             board.Placed+=PlaceMiniature;
             board.Hint+=value=>{if(toolText!=null)toolText.text=value;};
             screen.Add(board);
             toolText=Label(screen,ToolHelp("select"),"tool-hint");
             BuildSelectionBar();
             var tools=Row(screen);tools.AddToClassList("tools-main");
-            ModeButton(tools,"Фигуры","select");ModeButton(tools,"Карта","pan");
-            Button(tools,"Инструменты",()=>OpenPanel("tools"));
+            ModeButton(tools,"Объекты","select");ModeButton(tools,"Обзор","pan");
+            Button(tools,"Сетка",()=>OpenPanel("grid"));
             if(client.IsLocal)undoButton=Button(tools,"Отменить",client.UndoLocal);else undoButton=null;
             var bottom=Row(screen);bottom.AddToClassList("bottom-nav");
+            if(client.State.IsGm)Button(bottom,"Местность",()=>OpenPanel("terrain"));
             Button(bottom,client.State.IsGm?"Модели":"Фигуры",()=>OpenPanel("catalog"));
-            if(client.State.IsGm)Button(bottom,"Карта",()=>OpenPanel("maps"));
-            Button(bottom,"Бой",()=>OpenPanel("combat"));Button(bottom,"Кубики",()=>OpenPanel("dice"));
-            Button(bottom,"Журнал",()=>OpenPanel("chat"));
+            if(client.State.IsGm)Button(bottom,"Карты",()=>OpenPanel("maps"));
+            Button(bottom,"Игра",()=>OpenPanel("game"));
         }
 
         private void StateChanged(RoomState state)
         {
             if(board==null || tableGm!=state.IsGm) {ClosePanel();Table();}
             title.text=state.title;
-            info.text=state.Active.name+" · "+state.Active.cellFeet+" фт / клетка";
+            info.text=state.Active.name+" · "+(state.Active.width>80 || state.Active.height>80?$"{state.Active.width} × {state.Active.height}":state.Active.cellFeet+" фт / кл.");
             if(lastRevision!=state.revision)
             {
                 lastRevision=state.revision;
@@ -201,7 +202,7 @@ namespace FoxTable
                 loadedMap=key;
                 if(mapRequest!=null) StopCoroutine(mapRequest);
                 if(downloadedMap!=null) {Destroy(downloadedMap);downloadedMap=null;}
-                board.SetMap(state.Active.background=="blank" || !string.IsNullOrEmpty(state.Active.mapId)?null:Resources.Load<Texture2D>("Sanctuary"));
+                board.SetMap(!string.IsNullOrEmpty(state.Active.background) || !string.IsNullOrEmpty(state.Active.mapId)?null:Resources.Load<Texture2D>("Sanctuary"));
                 if(!string.IsNullOrEmpty(state.Active.mapId))
                     mapRequest=StartCoroutine(client.DownloadMap(state.Active.mapId, texture=> {
                         if(loadedMap==key && board!=null) {downloadedMap=texture;board.SetMap(texture);}
@@ -230,6 +231,9 @@ namespace FoxTable
                 case "dice": Dice(content); break;
                 case "chat": Chat(content); break;
                 case "maps": MapWorkspace(content); break;
+                case "createMap":CreateMapPanel(content);break;
+                case "terrain":TerrainPanel(content);break;
+                case "game":GamePanel(content);break;
                 case "catalog":Catalog(content);break;
                 case "tools":ToolsPanel(content);break;
                 case "grid":GridWorkspace(content,false);break;
@@ -255,7 +259,10 @@ namespace FoxTable
                 case "combat":return "Порядок инициативы";
                 case "dice":return "Бросок кубиков";
                 case "chat":return "Журнал приключения";
-                case "maps":return "Сцены и карты";
+                case "maps":return "Атлас кампании";
+                case "createMap":return "Новая карта";
+                case "terrain":return "Мастерская местности";
+                case "game":return "Игровой стол";
                 case "actions":return "Быстрые действия";
                 case "profile":return client.IsLocal?"Слои, ауры и атака":"Зрение, свет и бой";
                 case "lighting":return client.IsLocal?"Стены и двери":"Стены, двери и освещение";

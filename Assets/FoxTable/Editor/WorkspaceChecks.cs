@@ -23,7 +23,7 @@ namespace FoxTable.Editor
             Check(Resources.Load<Texture2D>("Sanctuary")!=null,"startup map is a 2D texture");
             var font=Resources.Load<Font>("DejaVuSans");Check(font!=null && font.HasCharacter('Ж'),"startup Cyrillic font");
             Check(Resources.Load<StyleSheet>("FoxTable")!=null && Resources.Load<ThemeStyleSheet>("FoxTheme")!=null,"startup styles and theme");
-            Check(TokenCatalog.All.Length==32 && TokenCatalog.All.Select(m=>m.id).Distinct().Count()==32,"catalog identities");
+            Check(TokenCatalog.All.Length==158 && TokenCatalog.All.Select(m=>m.id).Distinct().Count()==158,"catalog identities");
             foreach(var entry in TokenCatalog.All)Check(entry.Texture!=null && entry.Texture.width>0,"miniature imported: "+entry.id);
             var scene=LocalGame.Create().Active;
             var auto=MapLayout.ImageCells(scene,1000,500);

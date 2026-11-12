@@ -14,9 +14,12 @@ namespace FoxTable.Editor
         [MenuItem("FoxTable/1. Prepare project")]
         public static void Prepare()
         {
+            WorldAssetPreparation.Ensure();
             LocalGameChecks.Run();
             WorkspaceChecks.Run();
             InteractionChecks.Run();
+            BuilderChecks.Run();
+            UiChecks.Run();
             if (!Directory.Exists("Assets/FoxTable/Scenes"))
                 AssetDatabase.CreateFolder("Assets/FoxTable", "Scenes");
             if (!File.Exists(ScenePath))
@@ -37,7 +40,7 @@ namespace FoxTable.Editor
             EditorBuildSettings.scenes = new[] {new EditorBuildSettingsScene(ScenePath, true)};
             PlayerSettings.companyName = "FoxTable";
             PlayerSettings.productName = "FoxTable";
-            PlayerSettings.bundleVersion = "0.4.1";
+            PlayerSettings.bundleVersion = "0.5.0";
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.foxtable.mobile");
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToPortrait = true;
@@ -59,7 +62,7 @@ namespace FoxTable.Editor
             Prepare();
             Directory.CreateDirectory("Builds");
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
-                scenes = new[] {ScenePath}, locationPathName = "Builds/FoxTable-0.4.1.apk",
+                scenes = new[] {ScenePath}, locationPathName = "Builds/FoxTable-0.5.0.apk",
                 target = BuildTarget.Android, options = BuildOptions.None
             });
             if (report.summary.result != BuildResult.Succeeded)
@@ -72,7 +75,7 @@ namespace FoxTable.Editor
             Prepare();
             Directory.CreateDirectory("Builds");
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
-                scenes = new[] {ScenePath}, locationPathName = "Builds/FoxTable-0.4.1-dev.apk",
+                scenes = new[] {ScenePath}, locationPathName = "Builds/FoxTable-0.5.0-dev.apk",
                 target = BuildTarget.Android, options = BuildOptions.Development
             });
             if (report.summary.result != BuildResult.Succeeded)

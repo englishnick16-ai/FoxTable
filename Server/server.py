@@ -376,8 +376,21 @@ def apply_action(state, actor, b):
         gm(actor)
         require(len(state['scenes']) < 30, 'Лимит: 30 сцен')
         s = scene(text(b.get('name')))
-        s['background']=b.get('background','')
-        require(s['background'] in ('','blank'),'Неизвестный фон')
+        if 'preset' in b:
+            cells=int(number(b.get('cells',64),5,256))
+            presets=json.loads(Path(__file__).with_name('world_presets.json').read_text())['items']
+            preset=next((p for p in presets if p['id']==b['preset']),None)
+            require(preset is not None,'Неизвестный макет карты')
+            s.update(width=cells,height=cells,background=preset['background'],grid=False,snap=False,terrain=[])
+            scale=cells/64
+            for item in preset['props']:
+                t=token(item.get('name','Объект'),0,0,'object');size=max(1,min(16,math.floor(item['size']*scale+.5)))
+                t.update(artId=item['art'],size=size,x=max(0,min(cells-size,item['x']*cells)),y=max(0,min(cells-size,item['y']*cells)),layer='map')
+                s['tokens'].append(t)
+            for item in preset['terrain']:
+                s['terrain'].append(dict(id=uid(),kind=item['kind'],width=max(.25,min(32,item['width']*scale)),points=[dict(x=p['x']*cells,y=p['y']*cells) for p in item['points']]))
+        s['background']=b.get('background',s.get('background',''))
+        require(s['background'] in ('','blank','grass','sand','snow','paper'),'Неизвестный фон')
         state['scenes'].append(s)
         state['sceneId'] = s['id']
         return
@@ -396,20 +409,20 @@ def apply_action(state, actor, b):
         gm(actor)
         for field in ('width', 'height'):
             if field in b:
-                value = int(number(b[field], 5, 80))
+                value = int(number(b[field], 5, 256))
                 require(all(t['x']+t['size'] <= value for t in s['tokens']) if field == 'width'
                         else all(t['y']+t['size'] <= value for t in s['tokens']), 'Жетоны выходят за новые границы карты')
                 s[field] = value
         if 'cellFeet' in b:
             s['cellFeet'] = int(number(b['cellFeet'], 1, 100))
-        for field, low, high in [('mapPixelsPerCell',0,8192),('mapOffsetX',-80,80),('mapOffsetY',-80,80),('gridOpacity',0,1)]:
+        for field, low, high in [('mapPixelsPerCell',0,8192),('mapOffsetX',-256,256),('mapOffsetY',-256,256),('gridOpacity',0,1)]:
             if field in b:
                 s[field]=number(b[field],low,high)
         if 'gridColor' in b:
             require(isinstance(b['gridColor'],str) and re.fullmatch(r'#[0-9a-fA-F]{6}|',b['gridColor']),'Нужен цвет #RRGGBB')
             s['gridColor']=b['gridColor']
         if 'background' in b:
-            require(b['background'] in ('','blank'),'Неизвестный фон')
+            require(b['background'] in ('','blank','grass','sand','snow','paper'),'Неизвестный фон')
             s['background']=b['background']
         for field in ('grid', 'snap', 'fog', 'lighting', 'daylight', 'explorer', 'sharedVision', 'restrictMovement', 'enforceSpeed'):
             if field in b:
@@ -420,9 +433,28 @@ def apply_action(state, actor, b):
         if 'mapId' in b:
             require(isinstance(b['mapId'], str) and re.fullmatch(r'[0-9a-f]{16}|', b['mapId']), 'Неверный ID карты')
             s['mapId'] = b['mapId']
+        require(not s['lighting'] or s['width']<=80 and s['height']<=80,'Персональное освещение доступно на боевых сценах до 80 × 80 клеток')
+    elif kind in ('terrain.add','terrain.undo','terrain.clear'):
+        gm(actor)
+        terrain=s.setdefault('terrain',[])
+        if kind=='terrain.clear':
+            s['terrain']=[]
+        elif kind=='terrain.undo':
+            if terrain:terrain.pop()
+        else:
+            require(len(terrain)<256,'До 256 штрихов на сцену')
+            require(b.get('kind') in ('river','road','water','grass','sand','snow','forest'),'Неизвестная кисть')
+            width=number(b.get('width'),.25,32)
+            points=b.get('points')
+            require(type(points) is list and 1<=len(points)<=128,'От 1 до 128 точек штриха')
+            clean=[]
+            for point in points:
+                require(type(point) is dict,'Недопустимая точка')
+                clean.append(dict(x=number(point.get('x'),0,s['width']),y=number(point.get('y'),0,s['height'])))
+            terrain.append(dict(id=uid(),kind=b['kind'],width=width,points=clean))
     elif kind == 'token.add':
         gm(actor)
-        require(len(s['tokens']) < 100, 'Лимит: 100 жетонов на сцену')
+        require(len(s['tokens']) < 1000, 'Лимит: 1000 объектов на сцену')
         t = token(text(b.get('name')), 0, 0, b.get('kind', 'enemy'))
         require(t['kind'] in ('hero', 'enemy', 'object'), 'Неизвестный тип жетона')
         s['tokens'].append(t)
@@ -437,7 +469,7 @@ def apply_action(state, actor, b):
         require(actor['role'] == 'gm' or (t['ownerId'] == actor['id'] and t['layer'] == 'tokens' and visible(t, s, actor)), 'Это чужой или скрытый жетон', 403)
         if kind == 'token.duplicate':
             gm(actor)
-            require(len(s['tokens']) < 100, 'Лимит: 100 жетонов')
+            require(len(s['tokens']) < 1000, 'Лимит: 1000 объектов')
             duplicate = copy.deepcopy(t)
             duplicate.update(id=uid(), name=t['name']+' (копия)', movedFeet=0)
             duplicate['x'] = min(s['width']-t['size'], t['x']+1)
@@ -489,7 +521,7 @@ def apply_action(state, actor, b):
                     t[field] = int(number(b[field], lo, hi))
             t['hp'] = min(t['hp'], t['maxHp'])
             if 'size' in b:
-                size = int(number(b['size'], 1, 4))
+                size = int(number(b['size'], 1, min(16 if t['kind']=='object' else 4,s['width'],s['height'])))
                 if size != t['size']:
                     t['x'], t['y'] = min(t['x'], s['width']-size), min(t['y'], s['height']-size)
                 require(t['x']+size <= s['width'] and t['y']+size <= s['height'], 'Жетон за границей карты')

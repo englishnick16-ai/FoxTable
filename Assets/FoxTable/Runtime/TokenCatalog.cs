@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace FoxTable
@@ -15,7 +16,7 @@ namespace FoxTable
     public static class TokenCatalog
     {
         private static readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
-        public static readonly Miniature[] All={
+        private static readonly Miniature[] Original={
             new Miniature("knight","Рыцарь","Герои","hero",hp:38,ac:18,color:"#79c8ba"),
             new Miniature("mage","Маг","Герои","hero",hp:24,ac:12,color:"#b39cdd"),
             new Miniature("ranger","Следопыт","Герои","hero",hp:30,ac:15,color:"#99bd75"),
@@ -49,11 +50,12 @@ namespace FoxTable
             new Miniature("wall","Каменная стена","Подземелье","object",2),
             new Miniature("bones","Кости","Подземелье","object")
         };
+        public static readonly Miniature[] All=Original.Concat(WorldCatalog.All).ToArray();
         public static Miniature Find(string id)=>Array.Find(All,v=>v.id==id);
         public static Texture2D Texture(string id)
         {
             if(string.IsNullOrEmpty(id) || Find(id)==null)return null;
-            if(!textures.TryGetValue(id,out var texture))textures[id]=texture=Resources.Load<Texture2D>("Miniatures/"+id);
+            if(!textures.TryGetValue(id,out var texture))textures[id]=texture=Resources.Load<Texture2D>((id.StartsWith("kk-")?"World/":"Miniatures/")+id);
             return texture;
         }
         public static string Art(TokenState token)

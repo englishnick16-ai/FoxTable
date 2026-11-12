@@ -88,7 +88,7 @@ def upgrade(state):
     for scene in state['scenes']:
         defaults = dict(lighting=False, daylight=True, explorer=True, sharedVision=False,
                         restrictMovement=True, enforceSpeed=False, barriers=[], exploredBy={},
-                        background='', gridColor='', gridOpacity=0, mapPixelsPerCell=0, mapOffsetX=0, mapOffsetY=0)
+                        terrain=[], background='', gridColor='', gridOpacity=0, mapPixelsPerCell=0, mapOffsetX=0, mapOffsetY=0)
         for key, value in defaults.items():
             scene.setdefault(key, value)
         for token in scene['tokens']:

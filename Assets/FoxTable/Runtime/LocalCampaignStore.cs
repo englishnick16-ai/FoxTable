@@ -37,7 +37,7 @@ namespace FoxTable
                 !save.state.IsGm || save.state.Active == null || save.state.members == null || save.state.messages == null)
                 throw new InvalidDataException("Неподдерживаемое локальное сохранение");
             foreach (var scene in save.state.scenes)
-                if (scene == null || scene.width < 5 || scene.height < 5 || scene.tokens == null || scene.barriers == null ||
+                if (scene == null || scene.width < 5 || scene.height < 5 || scene.width>MapBuilder.MaxCells || scene.height>MapBuilder.MaxCells || scene.tokens == null || scene.barriers == null ||
                     scene.drawings == null || scene.revealed == null || scene.currentCells == null || scene.exploredCells == null)
                     throw new InvalidDataException("Неполная сцена в сохранении");
             return save.state;

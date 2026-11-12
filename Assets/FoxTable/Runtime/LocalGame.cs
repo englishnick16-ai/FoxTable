@@ -60,9 +60,9 @@ namespace FoxTable
             if (type == "room") { state.title = Text(b, "title", state.title); return; }
             if (type == "scene.add") {
                 Need(state.scenes.Length < 30, "Лимит: 30 сцен");
-                var added = NewScene(Text(b, "name", "Новая сцена"));
-                added.background=Text(b,"background","");
-                Need(added.background=="" || added.background=="blank", "Неизвестный фон");
+                var added = b.ContainsKey("preset")?MapBuilder.Create(Text(b,"name","Новая карта"),Text(b,"preset"),(int)Num(b,"cells",5,MapBuilder.MaxCells,64)):NewScene(Text(b, "name", "Новая сцена"));
+                added.background=Text(b,"background",added.background??"");
+                Need(MapBuilder.Background(added.background), "Неизвестный фон");
                 state.scenes = Add(state.scenes, added); state.sceneId = added.id; return;
             }
             string sceneId = Text(b, "sceneId", state.sceneId);
@@ -77,8 +77,11 @@ namespace FoxTable
                     if (state.sceneId == s.id) state.sceneId = state.scenes[0].id;
                     break;
                 case "scene.update": UpdateScene(s, b); break;
+                case "terrain.add": MapBuilder.AddStroke(s,b);break;
+                case "terrain.undo": s.terrain=(s.terrain??Array.Empty<TerrainStroke>()).Take(Math.Max(0,(s.terrain?.Length??0)-1)).ToArray();break;
+                case "terrain.clear": s.terrain=Array.Empty<TerrainStroke>();break;
                 case "token.add":
-                    Need(s.tokens.Length < 100, "Лимит: 100 жетонов");
+                    Need(s.tokens.Length < MapBuilder.MaxObjects, "Лимит: 1000 объектов");
                     string kind = Text(b, "kind", "enemy");
                     Need(new[] { "hero", "enemy", "object" }.Contains(kind), "Неизвестный тип жетона");
                     var addedToken=NewToken(Text(b, "name", "Жетон"), kind);
@@ -137,7 +140,7 @@ namespace FoxTable
 
         private static void UpdateScene(SceneState s, Dictionary<string, object> b)
         {
-            int width = (int)Num(b, "width", 5, 80, s.width), height = (int)Num(b, "height", 5, 80, s.height);
+            int width = (int)Num(b, "width", 5, MapBuilder.MaxCells, s.width), height = (int)Num(b, "height", 5, MapBuilder.MaxCells, s.height);
             Need(s.tokens.All(t => t.x + t.size <= width && t.y + t.size <= height), "Жетоны выходят за новые границы карты");
             s.width = width; s.height = height; s.cellFeet = (int)Num(b, "cellFeet", 1, 100, s.cellFeet);
             s.name = Text(b, "name", s.name); s.grid = Flag(b, "grid", s.grid); s.snap = Flag(b, "snap", s.snap);
@@ -145,12 +148,13 @@ namespace FoxTable
             s.daylight = Flag(b, "daylight", s.daylight); s.explorer = Flag(b, "explorer", s.explorer);
             s.sharedVision = Flag(b, "sharedVision", s.sharedVision); s.restrictMovement = Flag(b, "restrictMovement", s.restrictMovement);
             s.enforceSpeed = Flag(b, "enforceSpeed", s.enforceSpeed);
+            Need(!s.lighting || s.width<=80 && s.height<=80,"Персональное освещение доступно на боевых сценах до 80 × 80 клеток");
             s.mapPixelsPerCell=Num(b,"mapPixelsPerCell",0,8192,s.mapPixelsPerCell);
-            s.mapOffsetX=Num(b,"mapOffsetX",-80,80,s.mapOffsetX);s.mapOffsetY=Num(b,"mapOffsetY",-80,80,s.mapOffsetY);
+            s.mapOffsetX=Num(b,"mapOffsetX",-MapBuilder.MaxCells,MapBuilder.MaxCells,s.mapOffsetX);s.mapOffsetY=Num(b,"mapOffsetY",-MapBuilder.MaxCells,MapBuilder.MaxCells,s.mapOffsetY);
             s.gridOpacity=Num(b,"gridOpacity",0,1,s.gridOpacity);
             s.gridColor=Text(b,"gridColor",s.gridColor??"");
             Need(s.gridColor=="" || Regex.IsMatch(s.gridColor,"^#[0-9a-fA-F]{6}$"),"Нужен цвет #RRGGBB");
-            s.background=Text(b,"background",s.background??"");Need(s.background=="" || s.background=="blank","Неизвестный фон");
+            s.background=Text(b,"background",s.background??"");Need(MapBuilder.Background(s.background),"Неизвестный фон");
             if (b.ContainsKey("mapId")) {
                 string map = Text(b, "mapId"); Need(Regex.IsMatch(map, "^([0-9a-f]{16})?$"), "Неверный ID карты"); s.mapId = map;
             }
@@ -166,7 +170,7 @@ namespace FoxTable
                     t.x = s.snap ? (float)Math.Floor(x + 0.5) : x; t.y = s.snap ? (float)Math.Floor(y + 0.5) : y; break;
                 case "token.delete": s.tokens = s.tokens.Where(v => v != t).ToArray(); if (s.turnId == t.id) s.turnId = ""; break;
                 case "token.duplicate":
-                    Need(s.tokens.Length < 100, "Лимит: 100 жетонов");
+                    Need(s.tokens.Length < MapBuilder.MaxObjects, "Лимит: 1000 объектов");
                     // Copy arrays as well: editing a duplicate must not alter its original.
                     var copy = t.Copy();
                     copy.id = Id(); copy.name += " (копия)"; copy.movedFeet = 0; copy.x = Math.Min(s.width - t.size, t.x + 1);
@@ -191,7 +195,7 @@ namespace FoxTable
             t.maxHp = (int)Num(b, "maxHp", 1, 9999, t.maxHp); t.hp = Math.Min(t.maxHp, (int)Num(b, "hp", 0, 9999, t.hp));
             t.ac = (int)Num(b, "ac", 0, 99, t.ac); t.initiative = (int)Num(b, "initiative", -100, 100, t.initiative);
             int oldSize=t.size;
-            t.size = (int)Num(b, "size", 1, 4, t.size);
+            t.size = (int)Num(b, "size", 1, Math.Min(t.kind=="object"?16:4,Math.Min(s.width,s.height)), t.size);
             if(t.size!=oldSize){t.x=Math.Min(t.x,s.width-t.size);t.y=Math.Min(t.y,s.height-t.size);}
             Need(t.x + t.size <= s.width && t.y + t.size <= s.height, "Жетон за границей карты");
             t.color = Text(b, "color", t.color); Need(Regex.IsMatch(t.color, "^#[0-9a-fA-F]{6}$"), "Нужен цвет #RRGGBB");
@@ -279,11 +283,11 @@ namespace FoxTable
         private static void Paint(SceneState s, Dictionary<string, object> b)
         {
             int x = (int)Num(b, "x", 0, s.width - 1), y = (int)Num(b, "y", 0, s.height - 1), radius = (int)Num(b, "radius", 0, 10, 1);
-            var cells = new HashSet<int>(s.revealed.Select(c => c.y * 100 + c.x));
+            var cells = new HashSet<int>(s.revealed.Select(c => c.y * MapBuilder.CellStride + c.x));
             for (int yy = Math.Max(0, y - radius); yy <= Math.Min(s.height - 1, y + radius); yy++)
                 for (int xx = Math.Max(0, x - radius); xx <= Math.Min(s.width - 1, x + radius); xx++)
-                    if (Flag(b, "reveal", true)) cells.Add(yy * 100 + xx); else cells.Remove(yy * 100 + xx);
-            s.revealed = cells.OrderBy(v => v).Select(v => new Cell { x = v % 100, y = v / 100 }).ToArray();
+                    if (Flag(b, "reveal", true)) cells.Add(yy * MapBuilder.CellStride + xx); else cells.Remove(yy * MapBuilder.CellStride + xx);
+            s.revealed = cells.OrderBy(v => v).Select(v => new Cell { x = v % MapBuilder.CellStride, y = v / MapBuilder.CellStride }).ToArray();
         }
         private static void Combat(SceneState s, string type)
         {

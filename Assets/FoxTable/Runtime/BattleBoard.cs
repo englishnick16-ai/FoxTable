@@ -23,6 +23,10 @@ namespace FoxTable
         private readonly Dictionary<string,PendingMove> pendingMoves=new Dictionary<string,PendingMove>();
         private bool panOnly, labelsVisible;
         private Texture2D mapTexture;
+        private readonly TerrainLayer terrain;
+        private readonly List<MapPoint> brushPoints=new List<MapPoint>();
+        public float BrushWidth {get;set;}=2;
+        private bool IsBrush=>Tool.StartsWith("paint:",StringComparison.Ordinal);
         private readonly Dictionary<string,PieceView> views=new Dictionary<string,PieceView>();
         private sealed class PieceView { public VisualElement root,hp;public Image art;public Label letter,label; }
         private bool needsFit=true;
@@ -53,7 +57,7 @@ namespace FoxTable
             style.flexGrow = 1;
             style.minHeight=100;
             world=new VisualElement {name="board-world",pickingMode=PickingMode.Ignore,usageHints=UsageHints.DynamicTransform | UsageHints.GroupTransform};
-            world.style.position=Position.Absolute;world.style.left=0;world.style.top=0;
+            world.style.overflow=Overflow.Hidden;world.style.position=Position.Absolute;world.style.left=0;world.style.top=0;
             world.style.transformOrigin=new TransformOrigin(0,0,0);
             Add(world);
             style.overflow = Overflow.Hidden;
@@ -61,6 +65,7 @@ namespace FoxTable
             map = new Image { pickingMode = PickingMode.Ignore, scaleMode = ScaleMode.StretchToFill };
             map.style.position = Position.Absolute;
             world.Add(map);
+            terrain=new TerrainLayer();world.Add(terrain);
             markings = new VisualElement { pickingMode = PickingMode.Ignore };
             Stretch(markings);
             markings.generateVisualContent += Paint;
@@ -105,9 +110,9 @@ namespace FoxTable
             state = value;
             scene = value.Active;
             revealed.Clear(); currentCells.Clear(); exploredCells.Clear();
-            foreach (var cell in scene.currentCells) currentCells.Add(cell.y*100+cell.x);
-            foreach (var cell in scene.exploredCells) exploredCells.Add(cell.y*100+cell.x);
-            foreach (var cell in scene.revealed) revealed.Add(cell.y * 100 + cell.x);
+            foreach (var cell in scene.currentCells) currentCells.Add(cell.y*MapBuilder.CellStride+cell.x);
+            foreach (var cell in scene.exploredCells) exploredCells.Add(cell.y*MapBuilder.CellStride+cell.x);
+            foreach (var cell in scene.revealed) revealed.Add(cell.y * MapBuilder.CellStride + cell.x);
             if (activeScene != scene.id)
             {
                 activeScene = scene.id;
@@ -121,7 +126,7 @@ namespace FoxTable
             foreach(var id in pendingMoves.Keys.ToArray())
                 if(state.revision>pendingMoves[id].revision || !scene.tokens.Any(t=>t.id==id))pendingMoves.Remove(id);
             world.style.width=scene.width*CellSize;world.style.height=scene.height*CellSize;
-            SyncPieces();UpdateMapGeometry();UpdateFog();
+            SyncPieces();UpdateMapGeometry();UpdateFog();terrain.Set(scene.terrain);world.style.backgroundColor=TerrainLayer.Ground(scene.background);
             UpdateSelection();foreach(var view in views.Values)view.label.style.display=Unit>22?DisplayStyle.Flex:DisplayStyle.None;
             markings.MarkDirtyRepaint();overlay.MarkDirtyRepaint();
             Refresh();
@@ -137,13 +142,24 @@ namespace FoxTable
             foreach(var id in ids){var t=Array.Find(scene.tokens,v=>v.id==id);if(t!=null)UpdatePiecePosition(t,new Vector2(t.x,t.y));}
         }
 
+        public void EnsureSelectionVisible(float bottomInset)
+        {
+            if(scene==null || selectedId==null || contentRect.height<100)return;
+            var t=Array.Find(scene.tokens,v=>v.id==selectedId);if(t==null)return;
+            var a=ToLocal(t.x,t.y);var b=ToLocal(t.x+t.size,t.y+t.size);
+            float bottom=Mathf.Max(70,contentRect.height-bottomInset);
+            if(b.y>bottom)offset.y-=b.y-bottom;else if(a.y<12)offset.y+=12-a.y;
+            if(b.x>contentRect.width-12)offset.x-=b.x-(contentRect.width-12);else if(a.x<12)offset.x+=12-a.x;
+            Refresh();
+        }
+
         public void Fit()
         {
             if (scene == null) return;
             if(float.IsNaN(contentRect.width) || float.IsNaN(contentRect.height) || contentRect.width<30 || contentRect.height<30){needsFit=true;return;}
             needsFit=false;
             zoom = Mathf.Clamp(Mathf.Min((contentRect.width-30) / (scene.width * CellSize),
-                (contentRect.height-30) / (scene.height * CellSize)), 0.05f, 3f);
+                (contentRect.height-30) / (scene.height * CellSize)), 0.005f, 3f);
             offset = new Vector2((contentRect.width-scene.width*Unit)/2, (contentRect.height-scene.height*Unit)/2);
             Refresh();
         }
@@ -153,7 +169,7 @@ namespace FoxTable
         {
             if(float.IsNaN(location.x) || float.IsNaN(location.y))return;
             var world = ToCell(location);
-            zoom = Mathf.Clamp(value, 0.05f, 3f);
+            zoom = Mathf.Clamp(value, 0.005f, 3f);
             offset = location - world * Unit;
             Refresh();
         }
@@ -185,7 +201,7 @@ namespace FoxTable
             this.CapturePointer(e.pointerId);
             if (pointers.Count>=2)
             {
-                RestoreDragPreview();
+                RestoreDragPreview();brushPoints.Clear();
                 GetPair(out var first,out var second);
                 pinching = true;
                 pinchDistance = Mathf.Max(1, Vector2.Distance(first,second));
@@ -213,6 +229,7 @@ namespace FoxTable
                 }
                 Refresh();
             }
+            else if(IsBrush){brushPoints.Clear();AddBrushPoint(anchor);}
             else if (Tool=="reveal" || Tool=="conceal") Fog(anchor);
             else if (Tool=="measure" || Tool=="circle" || Tool=="cone" || Tool=="line" || Tool=="wall" || Tool=="door" || Tool=="window") measuring=true;
             e.StopPropagation();
@@ -226,7 +243,7 @@ namespace FoxTable
             if (pinching && pointers.Count>=2)
             {
                 GetPair(out var first,out var second);
-                zoom=Mathf.Clamp(pinchZoom*Vector2.Distance(first,second)/pinchDistance,0.05f,3f);
+                zoom=Mathf.Clamp(pinchZoom*Vector2.Distance(first,second)/pinchDistance,0.005f,3f);
                 offset=(first+second)/2-pinchWorld*Unit;
                 Refresh();
                 return;
@@ -243,6 +260,7 @@ namespace FoxTable
                 dragPosition.y=Mathf.Clamp(dragPosition.y,0,scene.height-t.size);
                 UpdatePiecePosition(t,dragPosition);
             }
+            else if(IsBrush){AddBrushPoint(ToCell(local));}
             else if (measuring)
             {
                 dragPosition=ToCell(local);
@@ -315,8 +333,18 @@ namespace FoxTable
                 var cell=ToCell(local);
                 Send("ping","x",Mathf.Clamp(cell.x,0,scene.width),"y",Mathf.Clamp(cell.y,0,scene.height));
             }
+            if(IsBrush && brushPoints.Count>0 && state.IsGm && !(client?.IsPreview??false)){
+                var points=brushPoints.Select(p=>(object)Json.Fields("x",p.x,"y",p.y)).ToArray();
+                Send("terrain.add","kind",Tool.Substring(6),"width",BrushWidth,"points",points);
+            }
             ResetGesture();
             Refresh();
+        }
+        private void AddBrushPoint(Vector2 point){
+            point.x=Mathf.Clamp(point.x,0,scene.width);point.y=Mathf.Clamp(point.y,0,scene.height);
+            if(brushPoints.Count>0 && Vector2.Distance(point,new Vector2(brushPoints[brushPoints.Count-1].x,brushPoints[brushPoints.Count-1].y))<Mathf.Max(.15f,BrushWidth*.15f))return;
+            if(brushPoints.Count>=128)for(int i=1;i<brushPoints.Count-1;i++)brushPoints.RemoveAt(i);
+            brushPoints.Add(new MapPoint{x=point.x,y=point.y});
         }
 
         private void Send(string type,params object[] args)=>dispatch(type,args);
@@ -331,7 +359,7 @@ namespace FoxTable
             var ids=pointers.Keys.ToArray();pointers.Clear();
             foreach (var id in ids) if (this.HasPointerCapture(id)) this.ReleasePointer(id);
             pointers.Clear();
-            pinching=false; panOnly=false;dragId=null; measuring=false; moved=false;
+            pinching=false; panOnly=false;dragId=null; measuring=false; moved=false;brushPoints.Clear();
             overlay.MarkDirtyRepaint();
         }
         private void RestoreDragPreview()
@@ -416,7 +444,7 @@ namespace FoxTable
             world.transform.scale=new Vector3(zoom,zoom,1);
             bool show=Unit>22;
             if(show!=labelsVisible){labelsVisible=show;foreach(var view in views.Values)view.label.style.display=show?DisplayStyle.Flex:DisplayStyle.None;}
-            if(measuring || scene.barriers.Length>0 || state.effect!=null || state.ping!=null)overlay.MarkDirtyRepaint();
+            if(IsBrush || measuring || scene.barriers.Length>0 || state.effect!=null || state.ping!=null)overlay.MarkDirtyRepaint();
         }
         private void UpdateFog()
         {
@@ -429,7 +457,7 @@ namespace FoxTable
                 fogPixels=new Color32[scene.width*scene.height];fogImage.image=fogTexture;
             }
             for(int y=0;y<scene.height;y++)for(int x=0;x<scene.width;x++){
-                int key=y*100+x;float alpha=scene.fog && !revealed.Contains(key)?(state.IsGm?.62f:1):0;
+                int key=y*MapBuilder.CellStride+x;float alpha=scene.fog && !revealed.Contains(key)?(state.IsGm?.62f:1):0;
                 if(scene.lighting && !state.IsGm && !currentCells.Contains(key)){
                     float light=scene.explorer && exploredCells.Contains(key)?.78f:1;alpha=1-(1-alpha)*(1-light);
                 }
@@ -499,6 +527,7 @@ namespace FoxTable
         {
             if(scene==null)return;
             var p=context.painter2D;
+            if(IsBrush && brushPoints.Count>0)TerrainLayer.Paint(p,new TerrainStroke{kind=Tool.Substring(6),width=BrushWidth,points=brushPoints.ToArray()},point=>ToLocal(point.x,point.y),Unit);
             if(measuring)Shape(p,Tool,ToLocal(anchor.x,anchor.y),ToLocal(dragPosition.x,dragPosition.y));
             foreach(var wall in scene.barriers)
             {
